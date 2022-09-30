@@ -1,0 +1,74 @@
+/*
+This is a block comment to make sure that the
+parser is able to handle leading text without
+t messing up
+*/
+
+// A line comment just for giggles
+
+/*
+Block comment part 2: Electric Boogaloo
+*/
+
+namespace ENGINE{
+	ShouldRenderWidgets: True
+	TargetFPS: 15
+	NumWorkerThreads: 10
+	SavegameFilepath: "Savefile.txt"
+
+	namespace WINDOW{
+		ShouldStartFullscreen: False;
+	};
+
+	namespace INPUT{
+		KeyDebounceTimeSeconds: 0.1;
+	};
+
+	namespace WORLD{
+		SkyColor: {0.1, 0.1, 0.1};
+
+		namespace CHUNK_GEN{
+			Seed: 56
+			//GenerationAlgorithm: NoiseLayers
+			//GenerationAlgorithm: Fractal
+			//GenerationAlgorithm: CenteredSphere;
+			//GenerationAlgorithm: Scratch;
+			//GenerationAlgorithm: MeshTesting
+			GenerationAlgorithm: PillarsAndCaves
+			//MinBounds: {-10, -10, -2};
+			//MaxBounds: {3, 3, 0};
+			MinBounds: {0, 0, 0};
+			MaxBounds: {0, 0, 0};
+		};
+	};
+
+	namespace RAYTRACING{
+		ImageDimensions: {500, 500};
+		TileDimensions: {64, 64};
+		NumRenderThreads: 4;
+		RaysPerPixel: 1;
+		MaxPathLen: 10;
+		ShouldCompressFailedPaths: False;
+
+		SkyColor: {0.5294, 0.8078, 0.9216};
+		SunColor: {0.9980, 0.8314, 0.2510};
+		SkyBrightnessMultiplier: 2.15;
+		SunBrightnessMultiplier: 0.0; //10.0;
+		SunDirection: {0.7, 0.9, 0.9};
+	};
+
+	namespace ACCELERATION{
+		namespace VKDTREE{
+			MaxDepth: 0;
+			MandatoryLeafVolume: 1
+		};
+
+		namespace MKDTREE{
+
+		};
+
+		namespace SVO{
+
+		};
+	};
+};
