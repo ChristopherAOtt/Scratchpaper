@@ -57,3 +57,4 @@ class EntityManager{
 		MathUtils::Random::SebVignaSplitmix64 m_id_generator;
 		std::unordered_map<EntityTypeIndex, std::unordered_set<EntityId>> m_active_ids_by_type;
 };
+

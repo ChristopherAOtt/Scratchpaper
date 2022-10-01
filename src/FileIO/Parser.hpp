@@ -41,7 +41,6 @@ namespace Parser{
 	};
 
 	struct SettingsParseResult{
-		bool is_valid;
 		std::unordered_map<std::string, Namespace> namespaces;
 		std::vector<ResourceDeclaration> declarations;
 	};
@@ -51,9 +50,9 @@ namespace Parser{
 	//-------------------------------------------
 	void printDummyKVPair(DummyKVPair& pair, InputBuffer* buffer);
 
-	TokenizedFile tokenizeFile(std::string filepath);
-	TokenizedFile tokenizeFile(std::string filepath, Tokenizer::Settings settings);
-	SettingsParseResult jankParseSettingsFile(const TokenizedFile& data);
+	std::pair<bool, TokenizedFile> tokenizeFile(std::string filepath);
+	std::pair<bool, TokenizedFile> tokenizeFile(std::string filepath, Tokenizer::Settings settings);
+	std::pair<bool, SettingsParseResult> jankParseSettingsFile(const TokenizedFile& data);
 }
 
 

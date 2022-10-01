@@ -34,8 +34,8 @@ class ResourceManager{
 		ResourceHandle addResource(std::string name, TriangleMesh data);
 		ResourceHandle addResource(std::string name, TempTexture data);
 
-		TriangleMesh getDataTriangleMesh(ResourceHandle handle);
-		TempTexture getDataTexture(ResourceHandle handle);
+		TriangleMesh getDataTriangleMesh(ResourceHandle handle) const;
+		TempTexture getDataTexture(ResourceHandle handle) const;
 
 	private:
 		ResourceId generateNewId();

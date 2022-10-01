@@ -657,7 +657,7 @@ constexpr bool Tokenization::hasDataPayload(TokenType type){
 	};
 }
 
-InputBuffer Tokenization::loadFileContents(std::string filepath){
+std::pair<bool, InputBuffer> Tokenization::loadFileContents(std::string filepath){
 	/*
 	Returns the contents of the target file in a single string.
 
@@ -670,10 +670,13 @@ InputBuffer Tokenization::loadFileContents(std::string filepath){
 	TODO: Better file size determination method.
 	*/
 
+	std::pair<bool, InputBuffer> out_pair;
+	out_pair.first = false;
 	std::string file_contents;
 
 	std::ifstream instream(filepath, std::ios::in | std::ios::binary);
 	if(instream){
+		out_pair.first = true;
 		instream.seekg(0, std::ios::end);
 		Uint64 file_size = instream.tellg();
 		file_contents.resize(file_size);
@@ -681,8 +684,9 @@ InputBuffer Tokenization::loadFileContents(std::string filepath){
 		instream.seekg(0, std::ios::beg);
 		instream.read(&file_contents[0], file_size);
 	}
-		
-	return {file_contents};
+
+	out_pair.second = {file_contents};
+	return out_pair;
 }
 
 

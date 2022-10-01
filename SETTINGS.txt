@@ -35,7 +35,7 @@ namespace ENGINE{
 			//GenerationAlgorithm: Scratch;
 			//GenerationAlgorithm: MeshTesting
 			GenerationAlgorithm: PillarsAndCaves
-			//MinBounds: {-10, -10, -2};
+			//MinBounds: {-2, -2, -4};
 			//MaxBounds: {3, 3, 0};
 			MinBounds: {0, 0, 0};
 			MaxBounds: {0, 0, 0};
@@ -46,7 +46,7 @@ namespace ENGINE{
 		ImageDimensions: {500, 500};
 		TileDimensions: {64, 64};
 		NumRenderThreads: 4;
-		RaysPerPixel: 1;
+		RaysPerPixel: 10;
 		MaxPathLen: 10;
 		ShouldCompressFailedPaths: False;
 

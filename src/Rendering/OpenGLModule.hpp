@@ -4,6 +4,7 @@
 #include "GLIncludes.hpp"
 #include "ChunkShader.hpp"
 #include "WidgetShader.hpp"
+#include "RigidTriangleMeshShader.hpp"
 #include "AssetManagerOpenGL.hpp"
 #include "MathUtils.hpp"
 #include "SystemMessages.hpp"
@@ -151,6 +152,7 @@ class OpenGLModule: public RenderingModule{
 		// List of all shaders used by this module
 		std::unique_ptr<BaseShader> m_widget_shader;
 		std::unique_ptr<BaseShader> m_chunk_shader;
+		std::unique_ptr<BaseShader> m_rigid_triangle_mesh_shader;
 
 		// Settings
 		bool m_render_widgets;

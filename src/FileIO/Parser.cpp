@@ -17,7 +17,7 @@ void Parser::printDummyKVPair(DummyKVPair& pair, InputBuffer* buffer){
 }
 
 
-Parser::TokenizedFile Parser::tokenizeFile(std::string filepath){
+std::pair<bool, Parser::TokenizedFile> Parser::tokenizeFile(std::string filepath){
 	/*
 	A pass-through function for when we just use the default settings
 	*/
@@ -25,15 +25,18 @@ Parser::TokenizedFile Parser::tokenizeFile(std::string filepath){
 	return tokenizeFile(filepath, Tokenizer::Settings::initDefault());
 }
 
-Parser::TokenizedFile Parser::tokenizeFile(std::string filepath, Tokenizer::Settings settings){
+std::pair<bool, Parser::TokenizedFile> Parser::tokenizeFile(std::string filepath, 
+	Tokenizer::Settings settings){
 	/*
 	Returns a list of tokens created from the file, along with the original
 	contents in a string.
 	*/
 
 	Parser::TokenizedFile tokenized_file;
-	
-	InputBuffer buffer = Tokenization::loadFileContents(filepath);
+	auto [is_valid, buffer] = Tokenization::loadFileContents(filepath);
+	if(!is_valid){
+		return {false, tokenized_file};
+	}
 	tokenized_file.text = buffer.contents;
 
 	Tokenizer tokenizer(&buffer, settings);
@@ -43,21 +46,23 @@ Parser::TokenizedFile Parser::tokenizeFile(std::string filepath, Tokenizer::Sett
 		tokenized_file.tokens.push_back(token);
 	}
 
-	return tokenized_file;
+	return {true, tokenized_file};
 }
 
 bool isNumeric(Token token){
 	return token.type == TOKEN_INTEGER || token.type == TOKEN_REAL;
 }
 
-Parser::SettingsParseResult Parser::jankParseSettingsFile(const TokenizedFile& data){
+std::pair<bool, Parser::SettingsParseResult> Parser::jankParseSettingsFile(
+	const TokenizedFile& data){
 	/*
 	WARNING: This function is pure jank. It is a temporary placeholder to get
 		settings parsing running.
 	TODO: Set up a proper grammar instead of this nonsense.
 	*/
 
-	SettingsParseResult invalid_result{.is_valid=false};
+	std::pair<bool, SettingsParseResult> out_pair;
+	out_pair.first = false;
 
 	InputBuffer buffer{data.text};
 
@@ -82,18 +87,18 @@ Parser::SettingsParseResult Parser::jankParseSettingsFile(const TokenizedFile& d
 			curr_token = data.tokens[read_pos++];
 			if(curr_token.type != TOKEN_IDENTIFIER){
 				printf("ERROR: 'namespace' MUST be followed by an id!\n");
-				return invalid_result;
+				return out_pair;
 			}
 			std::string text = tokenText(curr_token, &buffer);
 			auto iter = namespace_map.find(text);
 			if(iter != namespace_map.end()){
 				printf("ERROR: Namespace '%s' was already declared!\n", text.c_str());
-				return invalid_result;
+				return out_pair;
 			}
 
 			if(data.tokens[read_pos++].type != TOKEN_OPEN_CURLY_BRACKET){
 				printf("ERROR: Namespace '%s' didn't have an open bracket {\n", text.c_str());
-				return invalid_result;
+				return out_pair;
 			}
 
 			// Namespace was entered properly. We can now push it to the stack
@@ -108,7 +113,7 @@ Parser::SettingsParseResult Parser::jankParseSettingsFile(const TokenizedFile& d
 
 			if(stack.size() == 0){
 				printf("ERROR: Too many closed brackets!\n");
-				return invalid_result;
+				return out_pair;
 			}
 
 			// If there's a lower namespace, use it. Otherwise, we're at
@@ -124,7 +129,7 @@ Parser::SettingsParseResult Parser::jankParseSettingsFile(const TokenizedFile& d
 			if(data.tokens[read_pos++].type != TOKEN_SEMICOLON){
 				printf("ERROR: Namespace '%s' wasn't closed with a semicolon!\n",
 					old_namespace.c_str());
-				return invalid_result;
+				return out_pair;
 			}
 		}else if(curr_token.type == TOKEN_IDENTIFIER){
 			/*
@@ -134,7 +139,7 @@ Parser::SettingsParseResult Parser::jankParseSettingsFile(const TokenizedFile& d
 			// Make sure this id is on its own and not part of a malformed chain.
 			if(is_id_parse_in_progress){
 				printf("ERROR: Tried to put multiple ids on the same line!\n");
-				return invalid_result;
+				return out_pair;
 			}
 			Token key_token = curr_token;
 			std::vector<Token> value_tokens;
@@ -142,7 +147,7 @@ Parser::SettingsParseResult Parser::jankParseSettingsFile(const TokenizedFile& d
 			std::string id_text = tokenText(curr_token, &buffer);
 			if(data.tokens[read_pos++].type != TOKEN_COLON){
 				printf("ERROR: Id '%s' wasn't followed by a colon : \n", id_text.c_str());
-				return invalid_result;
+				return out_pair;
 			}
 
 			// Figure out what kind of value we got
@@ -169,7 +174,7 @@ Parser::SettingsParseResult Parser::jankParseSettingsFile(const TokenizedFile& d
 						// Something appeared in the vector that shouldn't be there.
 						printf("ERROR: Bad token in vector: ");
 						Tokenization::printToken(curr_token, &buffer); printf("\n");
-						return invalid_result;
+						return out_pair;
 					}
 				}
 				if(vector_members.size() == 2 || vector_members.size() == 3){
@@ -177,7 +182,7 @@ Parser::SettingsParseResult Parser::jankParseSettingsFile(const TokenizedFile& d
 				}else{
 					printf("ERROR: Got vector with %li members. Must be 2 or 3!\n", 
 						vector_members.size());
-					return invalid_result;
+					return out_pair;
 				}
 			}else{
 				/*
@@ -203,7 +208,7 @@ Parser::SettingsParseResult Parser::jankParseSettingsFile(const TokenizedFile& d
 				}else{
 					printf("ERROR: Got invalid token type: ");
 					Tokenization::printToken(curr_token, &buffer); printf("\n");
-					return invalid_result;
+					return out_pair;
 				}
 			}
 
@@ -226,7 +231,7 @@ Parser::SettingsParseResult Parser::jankParseSettingsFile(const TokenizedFile& d
 
 			printf("ERROR: Token not expected for any recognized pattern!\n");
 			printf("\t"); Tokenization::printToken(curr_token, &buffer); printf("\n");
-			return invalid_result;
+			return out_pair;
 		}
 	}
 
@@ -238,14 +243,15 @@ Parser::SettingsParseResult Parser::jankParseSettingsFile(const TokenizedFile& d
 	if(curr_token.type != TOKEN_STREAM_END){
 		printf("ERROR: Token stream continued after final namespace was closed!\n");
 		Tokenization::printToken(curr_token, &buffer); printf("\n");
-		return invalid_result;
+		return out_pair;
 	}
 
-	SettingsParseResult successful_result ={
-		.is_valid=true,
+	out_pair.first = true;
+	out_pair.second = {
 		.namespaces=namespace_map
 	};
-	return successful_result;
+
+	return out_pair;
 }
 
 

@@ -10,6 +10,8 @@
 //-------------------------------------------------------------------------------------------------
 typedef Bytes8 EntityIdOld;
 enum class EntityType{
+	ENTITY_INVALID = 0,
+
 	ENTITY_PLAYER,
 	ENTITY_DRONE
 };
@@ -195,4 +197,62 @@ class EntityTable{
 	private:
 		std::unordered_map<EntityIdOld, Entity> m_entities;
 
+};
+
+
+
+
+
+
+//-----------------------------------------------
+// Placeholder Entity Types
+//-----------------------------------------------
+struct PlaceholderEntity{
+	/*
+	Placeholder structure to get world entities running
+	*/
+
+	FVec3 position;       // 12
+	FVec3 velocity;       // 12
+	Basis basis;          // 36
+	EntityHandle handle;  // 8
+};
+static_assert(sizeof(PlaceholderEntity) == 68);
+
+struct JankyPlaceholderEntityFactory{
+	/*
+
+	*/
+
+	inline PlaceholderEntity initEntity(FVec3 position, Uint32 entity_index){
+		/*
+
+		*/
+
+		PlaceholderEntity entity = {
+			.position=position,
+			.velocity={0, 0, 0},
+			.basis={
+				{1, 0, 0},
+				{0, 1, 0},
+				{0, 0, 1},
+			},
+			.handle={
+				.type_index=entity_index,
+				.id=next_available_id++
+			}
+		};
+
+		return entity;
+	}
+
+	inline PlaceholderEntity initDefaultPlayer(FVec3 position){
+		return initEntity(position, (Uint32) EntityType::ENTITY_PLAYER);
+	}
+
+	inline PlaceholderEntity initDefaultDrone(FVec3 position){
+		return initEntity(position, (Uint32) EntityType::ENTITY_DRONE);
+	}
+
+	Uint32 next_available_id{1};
 };

@@ -118,6 +118,46 @@ void VG::Engine::initTargetWorld(){
 	m_simcache.generateAccelerationStructures(settings);
 }
 
+void VG::Engine::initResourceData(std::string filepath){
+	/*
+	Given the filepath of a resource declaration file, load as many of the
+	declared resources as possible into the resource manager.
+
+	TODO: Move this into the resource manager
+	*/
+
+	std::vector<SystemInstruction> resource_update_instructions;
+	std::vector<FileIO::ResourceDeclaration> declarations = FileIO::loadResourceDeclarations(filepath);
+	for(auto decl : declarations){
+		auto [name, type, source_filepath] = decl;
+
+		if(type == RESOURCE_RIGID_TRIANGLE_MESH){
+			auto [is_success, mesh] = MeshLoader::Obj::loadFromFile(source_filepath);
+			if(is_success){
+				ResourceHandle new_handle = m_simcache.m_resource_manager->addResource(name, mesh);
+
+				SystemInstruction instruction = {
+					.type=INSTRUCTION_ASSET,
+					.asset_instruction={
+						.type=LOAD_ASSET_BY_ID,
+						.handle=new_handle
+					}
+				};
+				resource_update_instructions.push_back(instruction);
+			}else{
+				// Error
+			}
+		}else{
+			// Error
+			// printf("\tUnable to load assets of type '%s'\n", RESOURCE_STRINGS[type]);
+		}
+	}
+
+	for(auto instruction : resource_update_instructions){
+		m_renderer.sendInstruction(instruction);
+	}
+}
+
 void pause(double seconds){
 	if(seconds < 0) return;
 
@@ -264,6 +304,7 @@ void assertNoRedundantOrders(std::vector<UnitOrder> order_list){
 	constexpr int INDEX_JUMP_COUNT = 2;
 	constexpr int INDEX_SHOOT_COUNT = 3;
 	constexpr int INDEX_INTERACTION_COUNT = 4;
+
 	int order_counts[] = {0, 0, 0, 0, 0};
 	for(UnitOrder order : order_list){
 		switch(order.type){
@@ -319,11 +360,12 @@ Basis rotatePlayerBasis(Basis basis, float horizontal, float vertical){
 	Basis output_basis = basis;
 	constexpr FVec3 VERTICAL_AXIS = {0, 0, 1};
 	constexpr FVec3 INVERTED_VERTICAL_AXIS = {0, 0, -1};
+	bool should_invert_controls_upside_down = false;
 
 	// Rotate Horizontal
 	if(horizontal != 0){
 		FVec3 rotation_axis = VERTICAL_AXIS;
-		if(basis.v2.dot(rotation_axis) < 0){
+		if(basis.v2.dot(rotation_axis) < 0 && should_invert_controls_upside_down){
 			rotation_axis = INVERTED_VERTICAL_AXIS;
 		}
 
@@ -340,56 +382,21 @@ Basis rotatePlayerBasis(Basis basis, float horizontal, float vertical){
 	return output_basis;
 }
 
-Entity initDefaultPlayer(){
-	/*
-	Creates a default player entity for testing purposes.
-	*/
-
-	// Defining constants for easier tweaking
-	constexpr FVec3 PLAYER_START_POS = {0, 0, 0};
-	constexpr float PLAYER_MASS = 70;
-	constexpr int MAX_PLAYER_HEALTH = 150;
-	constexpr Basis DEFAULT_PLAYER_BASIS = {
-		{1, 0, 0},  // X
-		{0, 1, 0},  // Y
-		{0, 0, 1}   // Z
-	};
-
-	// Assign values
-	Entity player_entity;
-	player_entity.pos = PLAYER_START_POS;
-	player_entity.velocity = {0, 0, 0};
-	player_entity.mass = PLAYER_MASS;
-	player_entity.curr_health = MAX_PLAYER_HEALTH;
-	player_entity.max_health = MAX_PLAYER_HEALTH;
-	player_entity.data.type = EntityType::ENTITY_PLAYER;
-	player_entity.data.player.player_id = 0;
-	player_entity.data.player.player_mode = PlayerMode::MODE_NOCLIP;
-	player_entity.data.player.basis = DEFAULT_PLAYER_BASIS;
-
-	return player_entity;
-}
-
-Entity handlePlayerOrders(Entity current_player, std::vector<UnitOrder> player_orders, double dt){
+PlaceholderEntity handlePlayerOrders(PlaceholderEntity curr_player, std::vector<UnitOrder> player_orders, double dt){
 	/*
 	WARNING: Temporary function for the sake of getting visuals working. 
 	WARNING: This function assumes that the player is noclipping around. Ignores physics.
 	TODO: Once a proper entity sim system is in place, this needs to be refactored and moved there.
 	*/
 
-	// A bunch of assertions for testing purposes.
-	// TODO: Remove assertions once input handling has been debugged.
-	assert(current_player.data.type == EntityType::ENTITY_PLAYER);
-	Player player_data = current_player.data.player;
-	assert(player_data.player_mode == PlayerMode::MODE_NOCLIP);
-	assert(player_data.player_id == 0);
+	assert(curr_player.handle.type_index == (Uint32) EntityType::ENTITY_PLAYER);
 	assertNoRedundantOrders(player_orders);
 
 	constexpr float PLAYER_WALK_SPEED = 10.0;
 	constexpr float PLAYER_RUN_SPEED = 400.0;
 	constexpr float ROTATION_SPEED = 100.0;
 
-	Entity updated_player = current_player;
+	PlaceholderEntity updated_player = curr_player;
 	for(UnitOrder order : player_orders){
 		if(order.type == ORDER_TRANSLATE_WALK || order.type == ORDER_TRANSLATE_RUN){
 			// TODO: Fix jank
@@ -398,30 +405,30 @@ Entity handlePlayerOrders(Entity current_player, std::vector<UnitOrder> player_o
 			FVec3 displacement = order.translation_order.relative_amounts.normal() * speed;
 			
 			FVec3 player_displacement = {0, 0, 0};
-			player_displacement += current_player.data.player.basis.v0 * displacement.x;
-			player_displacement += current_player.data.player.basis.v1 * displacement.y;
-			player_displacement += current_player.data.player.basis.v2 * displacement.z;
-			updated_player.pos += player_displacement;
+			player_displacement += curr_player.basis.v0 * displacement.x;
+			player_displacement += curr_player.basis.v1 * displacement.y;
+			player_displacement += curr_player.basis.v2 * displacement.z;
+			updated_player.position += player_displacement;
 		}else if(order.type == ORDER_ROTATE_ELEMENTWISE){
 			FVec2 rotation = order.rotation_order.relative_amounts * ROTATION_SPEED * dt;
-			Basis updated_basis = rotatePlayerBasis(updated_player.data.player.basis, 
+			Basis updated_basis = rotatePlayerBasis(updated_player.basis, 
 				rotation.x, rotation.y);
-			updated_player.data.player.basis = updated_basis.orthogonalized();
+			updated_player.basis = updated_basis.orthogonalized();
 		}
 	}
 
 	return updated_player;
 }
 
-Camera snapCameraToPlayerView(Camera camera, Entity player_entity){
+Camera snapCameraToPlayerView(Camera camera, PlaceholderEntity player){
 	/*
 	Given a camera, snap its position and basis to match the player's
 	position and look direction.
 	*/
 
 	Camera output_camera = camera;
-	output_camera.pos = player_entity.pos;
-	output_camera.basis = player_entity.data.player.basis;
+	output_camera.pos = player.position;
+	output_camera.basis = player.basis;
 
 	return output_camera;
 }
@@ -546,7 +553,11 @@ Raytracer::RenderSettings initRenderSettings(std::shared_ptr<Settings> ptr){
 }
 
 FVec3 randomComponents(MathUtils::Random::SebVignaSplitmix64& splitmix){
-	FVec3 random_vec{splitmix.next(), splitmix.next(), splitmix.next()};
+	FVec3 random_vec{
+		(float) splitmix.next(), 
+		(float) splitmix.next(), 
+		(float) splitmix.next()
+	};
 	return random_vec.normal();
 }
 
@@ -559,15 +570,15 @@ void VG::Engine::runMainLoop(){
 
 	// Either we need a window or headless mode
 	assert(m_window_ptr || !m_settings_ptr->namespaceRef("ENGINE")["UseGraphics"].val_bool);
+	m_renderer.initOpenGL();  // Has to happen after opengl init
 
 	// TODO: Remove this step once all world references are refactored to run via ptr
 	WorldState* world_state = m_simcache.m_reference_world;
 
 	Raytracer raytracer;
-	Renderer world_renderer;
 	Camera camera = initDefaultCamera();
-	Entity player = initDefaultPlayer();
-	player.pos = {0.5, -1.5, 0.2};
+	PlaceholderEntity& player = world_state->m_placeholder_entities[0];
+	assert(player.handle.type_index == (Uint32) EntityType::ENTITY_PLAYER);
 
 	m_window_ptr->setClearColor(world_state->m_fog_color);
 	m_window_ptr->setFullscreenState(
@@ -578,7 +589,7 @@ void VG::Engine::runMainLoop(){
 			.type=INSTRUCTION_CHUNK,
 			.chunk_instruction=meshing_instruction
 		};
-		world_renderer.sendInstruction(sys_meshing_instruction);
+		m_renderer.sendInstruction(sys_meshing_instruction);
 	}
 
 	float debounce_time = 0;  // Time since last key input
@@ -600,7 +611,7 @@ void VG::Engine::runMainLoop(){
 		.type=INSTRUCTION_GENERAL_TEXT,
 		.text_instruction={WIDGET_RENDERING_OPTIONS[should_render_widgets]}
 	};
-	world_renderer.sendInstruction(initial_widget_render_setting);
+	m_renderer.sendInstruction(initial_widget_render_setting);
 
 	// For screenshots vs renders
 	MathUtils::Random::SebVignaSplitmix64 random{3141592};
@@ -609,7 +620,7 @@ void VG::Engine::runMainLoop(){
 	Rendering::ImageConfig& image_config = render_settings.image_config;
 	
 	// Need to get initial widgets rendering
-	updateWidgetAssets(world_renderer);
+	updateWidgetAssets(m_renderer);
 
 	// Switches to control what parts of the main loop update
 	bool should_exit = false;
@@ -715,7 +726,7 @@ void VG::Engine::runMainLoop(){
 						.type=INSTRUCTION_GENERAL_TEXT,
 						.text_instruction={RENDERER_RELOAD_SHADERS_FROM_FILE}
 					};
-					world_renderer.sendInstruction(render_instruction);
+					m_renderer.sendInstruction(render_instruction);
 					
 					loadSettingsFromFile("SETTINGS.txt");
 
@@ -732,7 +743,7 @@ void VG::Engine::runMainLoop(){
 						.type=INSTRUCTION_GENERAL_TEXT,
 						.text_instruction={FACE_RENDERING_OPTIONS[rendermode_index]}
 					};
-					world_renderer.sendInstruction(render_instruction);
+					m_renderer.sendInstruction(render_instruction);
 				}
 
 				if(pressed_keys.count(KEY_I)){
@@ -742,7 +753,7 @@ void VG::Engine::runMainLoop(){
 						.type=INSTRUCTION_GENERAL_TEXT,
 						.text_instruction={WIDGET_RENDERING_OPTIONS[widget_render_index]}
 					};
-					world_renderer.sendInstruction(render_instruction);
+					m_renderer.sendInstruction(render_instruction);
 				}
 
 				if(pressed_keys.count(KEY_C)){
@@ -753,21 +764,20 @@ void VG::Engine::runMainLoop(){
 					}else{
 						printf("Previewing image (this might take a while)...\n");
 						raytracer.renderPreview(m_simcache, camera, render_settings.image_config);
-						//m_simcache.traceImage(camera, image_config);
 					}
 					renderer_should_update = true;
 				}
 
 				if(pressed_keys.count(KEY_G)){
 					// Prints the player's current position
-					printf("Current Player Position: "); printPODStruct(player.pos); printf("\n");
+					printf("Current Player Position: "); printPODStruct(player.position); printf("\n");
 				}
 
 				if(pressed_keys.count(KEY_X) || pressed_keys.count(KEY_O)){
 					// Place portal exit(X) or opening(O)
 					int index_to_move = pressed_keys.count(KEY_X);
 					Portal& portal = m_simcache.m_reference_world->m_temp_portal;
-					portal.locations[index_to_move] = player.pos;
+					portal.locations[index_to_move] = player.position;
 
 					std::vector<Widget> portal_widgets = Debug::portalWidgets(portal);
 					world_state->addWidgetData("PortalWidgets", portal_widgets, false);
@@ -776,10 +786,9 @@ void VG::Engine::runMainLoop(){
 			}
 
 			if(renderer_should_update){
-				updateWidgetAssets(world_renderer);	
+				updateWidgetAssets(m_renderer);	
 			}
 		}
-		world_state->m_viewer_entity = player;
 
 		// Simulate world dynamics. Ai, Physics, etc.
 		if(should_execute_simulation){
@@ -788,7 +797,7 @@ void VG::Engine::runMainLoop(){
 		
 		// Render world state from player perspective
 		if(m_window_ptr){
-			world_renderer.render(m_simcache, camera);
+			m_renderer.render(m_simcache, camera);
 			m_window_ptr->swapBuffers();
 		}
 
@@ -919,5 +928,3 @@ Settings VG::Engine::defaultSettings(){
 
 	return settings;
 }
-
-

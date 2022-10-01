@@ -5,6 +5,7 @@
 #include "ResourceManager.hpp"
 #include "KDTree.hpp"
 #include "RayTracing.hpp"
+#include "MeshLoader.hpp"
 
 #include "FileIO.hpp"
 
@@ -20,9 +21,10 @@ class SimCache{
 		~SimCache();
 
 		void generateAccelerationStructures(VoxelKDTree::BuildSettings settings);
-		RayIntersection traceRay(Ray ray);
-		void traceImage(Camera& camera, Rendering::ImageConfig config);
-		void findIntersectionDiscrepancies(int num_iterations);
+
+		//RayIntersection traceRay(Ray ray);
+		//void traceImage(Camera& camera, Rendering::ImageConfig config);
+		//void findIntersectionDiscrepancies(int num_iterations);
 
 	public:
 		WorldState* m_reference_world;

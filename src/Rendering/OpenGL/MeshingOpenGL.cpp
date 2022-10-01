@@ -95,6 +95,12 @@ RigidTriangleMeshOpengl MesherOpenGL::toOpenglFormat(const TriangleMesh& mesh){
 		ranges_by_material[named_range.name].push_back(named_range.range);
 	}
 
+	// For meshes with no material, everything is in the default range.
+	// TODO: Make this work if only some triangles have materials
+	if(mesh.material_ranges.size() == 0){
+		ranges_by_material["DEFAULT"].push_back({0, mesh.triangles.size()});
+	}
+
 	Int32 tri_count = 0;
 	Int32 curr_index = 0;
 	std::unordered_map<std::string, Range32> output_material_ranges;

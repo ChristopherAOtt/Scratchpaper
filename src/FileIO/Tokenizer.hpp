@@ -509,7 +509,7 @@ class Tokenizer{
 namespace Tokenization{
 	// Helper functions
 	constexpr bool hasDataPayload(TokenType type);
-	InputBuffer loadFileContents(std::string filepath);
+	std::pair<bool, InputBuffer> loadFileContents(std::string filepath);
 
 	// Printing functions
 	void printMatchResult(const MatchResult& result, 

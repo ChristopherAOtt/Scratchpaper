@@ -88,6 +88,7 @@ void runChunkMeshingJob(WorkGroup::ScratchMemory* input_ptr, WorkGroup::ScratchM
 OpenGLModule::OpenGLModule(): m_work_group(NUM_RENDERER_WORKERS){
 	m_widget_shader = std::unique_ptr<BaseShader>(new WidgetShader);
 	m_chunk_shader = std::unique_ptr<BaseShader>(new ChunkShader);
+	m_rigid_triangle_mesh_shader = std::unique_ptr<BaseShader>(new RigidTriangleMeshShader);
 
 	m_render_widgets = true;
 
@@ -113,8 +114,14 @@ void OpenGLModule::initShadersFromSourceFiles(){
 	std::vector<std::pair<BaseShader*, std::string>> shaders_and_sources = {
 		{m_widget_shader.get(), "Shaders/Widget.shader"},
 		{m_chunk_shader.get(), "Shaders/Chunk.shader"},
+		{m_rigid_triangle_mesh_shader.get(), "Shaders/RigidTriangleMesh.shader"},
 	};
 
+	const char* OUTCOME_TEXT[] = {
+		"FAILURE",
+		"SUCCESS"
+	};
+	
 	printf("Loading %lu shader files...\n", shaders_and_sources.size());
 	for(auto [shader_ptr, source_filepath] : shaders_and_sources){
 		// Delete the old shader to avoid memory leaks
@@ -122,10 +129,16 @@ void OpenGLModule::initShadersFromSourceFiles(){
 		
 		// Init the new shader
 		auto shader_map = loadShadersFromFile(source_filepath);
+		for(auto name : {VERTEX_SECTION_NAME, FRAGMENT_SECTION_NAME}){
+			auto iter = shader_map.find(name);
+			assert(iter != shader_map.end());
+		}
+
 		shader_ptr->compileShaders(
 			shader_map[VERTEX_SECTION_NAME], 
 			shader_map[FRAGMENT_SECTION_NAME]);
-		printf("%p --> %s (%i)\n", (void*) shader_ptr, &source_filepath[0], shader_ptr->isValid());
+		printf("\tLoaded %p --> %s (%s)\n", (void*) shader_ptr, source_filepath.c_str(), 
+			OUTCOME_TEXT[shader_ptr->isValid()]);
 	}
 }
 
@@ -288,14 +301,61 @@ void OpenGLModule::render(const SimCache& state, const Camera& camera,
 	//-------------------------------------------
 	// Render all entities
 	//-------------------------------------------
+	// TODO: Group all entities by type get handle/mesh info once per type
+	ResourceHandle drone_handle = resource_manager->handleByName("DroneModel");
+	assert(drone_handle.type != RESOURCE_INVALID);
+	RenderableId drone_renderable_id = m_asset_manager.getId(drone_handle);
+	assert(drone_renderable_id != INVALID_RENDERABLE_ID);
+	RenderableBufferMetadata drone_metadata = m_asset_manager.getMetadata(drone_renderable_id);
+	assert(drone_metadata.id != INVALID_RENDERABLE_ID);
+
+	m_rigid_triangle_mesh_shader->use();
+	m_rigid_triangle_mesh_shader->setTime(world_ptr->currentTime());
+	m_rigid_triangle_mesh_shader->setViewMatrix(view_matrix);
+	m_rigid_triangle_mesh_shader->setProjectionMatrix(projection_matrix);
+	m_rigid_triangle_mesh_shader->setCameraPos(camera.pos);
+	m_rigid_triangle_mesh_shader->setFogColor(world_ptr->m_fog_color);
+	
+	glBindVertexArray(drone_metadata.vao);
+	for(const PlaceholderEntity& entity : world_ptr->m_placeholder_entities){
+		// TODO: Legitimate filter for renderable entities
+		if(entity.handle.type_index != 2){
+			continue;
+		}
+
+		// TODO: Support rotation
+		FMat4 model_matrix = MathUtils::Matrix::makeModelMatrix(entity.position);
+		m_rigid_triangle_mesh_shader->setModelMatrix(model_matrix);
+
+		glDrawElements(
+			GL_TRIANGLES,
+			drone_metadata.num_indices, 
+			GL_UNSIGNED_INT, 
+			(void*)0);
+	}
+	glBindVertexArray(0);
+	m_rigid_triangle_mesh_shader->stop();
 	
 }
 
-
 void OpenGLModule::setData(const SimCache& state, ResourceHandle handle){
 	m_tracked_resources.insert(handle);
-	assert(false);
-	// TODO: Load resource from ResourceManager and save
+
+	const ResourceManager* resource_ptr = state.m_resource_manager;
+	assert(handle.type != RESOURCE_INVALID);
+	
+	if(handle.type == RESOURCE_FONT){
+		assert(false);
+	}else if(handle.type == RESOURCE_TEXTURE){
+		assert(false);
+	}else if(handle.type == RESOURCE_RIGID_TRIANGLE_MESH){
+		TriangleMesh mesh = resource_ptr->getDataTriangleMesh(handle);
+		m_asset_manager.setRenderableData(handle, mesh);
+	}else if(handle.type == RESOURCE_RIGGED_SKELETAL_MESH){
+		assert(false);
+	}else{
+		assert(false);
+	}
 }
 
 void OpenGLModule::setData(const SimCache& state, CellAddress addr, const ChunkVoxelMesh& mesh){

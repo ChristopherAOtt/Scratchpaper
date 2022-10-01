@@ -37,9 +37,26 @@ WorldState* initWorldState(){
 		}
 	};
 
-	FVec2 dummy_uv = {0, 0};
+	// Init the player entity
+	FVec3 player_pos = FVec3{0.5, -1.5, 0.2};
+	auto player = world_ptr->m_jank_entity_factory.initDefaultPlayer(player_pos);
+	world_ptr->m_placeholder_entities.push_back(player);
+	world_ptr->m_viewer_entity_index = 0;
+
+	RandomGen gen;
+	gen.splitmix = {1234};
+
+	for(int i = 0; i < 10; ++i){
+		FVec3 random_pos = randomUnitNormal(gen) * 20;
+		FVec3 random_rot = randomUnitNormal(gen);
+
+		auto drone = world_ptr->m_jank_entity_factory.initDefaultDrone(random_pos);
+		drone.basis = rotateElementwise(DEFAULT_BASIS, random_rot.x, random_rot.y);
+		world_ptr->m_placeholder_entities.push_back(drone);
+	}
 	
 	// Basis vectors at the center of the world.
+	FVec2 dummy_uv = {0, 0};
 	std::vector<Widget> default_widgets;
 	for(int i = 0; i < 3; ++i){
 		FVec3 axis_color = {0, 0, 0};
@@ -60,8 +77,6 @@ WorldState* initWorldState(){
 
 	// Add some scratch visualizations
 	if(false){
-		RandomGen gen;
-		gen.splitmix = {1234};
 		for(int i = 0; i < 30000; ++i){
 			FVec3 normal = randomUnitNormal(gen);
 
@@ -93,6 +108,7 @@ void runEngineMainLoop(int argc, char** argv){
 	engine.setTargetWorld(initWorldState());
 	engine.initTargetWorld();
 	engine.initWindow();
+	engine.initResourceData("RESOURCES.txt");
 	engine.runMainLoop();
 }
 
@@ -474,8 +490,8 @@ int main(int argc, char** argv){
 	//testMeshLoad(argc, argv);
 	//scratchFloatMatcher();
 	
-	//testSphereIntersect();
 	runEngineMainLoop(argc, argv);
 
 	return 0;
 }
+  

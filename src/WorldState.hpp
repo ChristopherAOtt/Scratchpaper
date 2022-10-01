@@ -62,8 +62,11 @@ class WorldState{
 	public:
 		std::string m_name;
 
-		Entity m_viewer_entity;
-
+		//PlaceholderEntity m_viewer_entity;
+		JankyPlaceholderEntityFactory m_jank_entity_factory;
+		Uint64 m_viewer_entity_index;
+		std::vector<PlaceholderEntity> m_placeholder_entities;
+		
 		Portal m_temp_portal;
 		
 		FVec3 m_fog_color;

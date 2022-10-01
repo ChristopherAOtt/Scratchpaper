@@ -1,7 +1,7 @@
 #pragma once
 
 #include <string>
-#include <iostream>
+//#include <iostream>
 
 #include "Primitives.hpp"
 #include "GLIncludes.hpp"

@@ -94,7 +94,10 @@ MeshLoader::Obj::loadFromFile(std::string filepath){
 	settings.emit_whitespace_tokens = true;
 	settings.attempt_reserved_words = false;
 
-	Parser::TokenizedFile file = Parser::tokenizeFile(filepath, settings);
+	auto [is_valid, file] = Parser::tokenizeFile(filepath, settings);
+	if(!is_valid){
+		return out_pair;
+	}
 	InputBuffer buffer{file.text};
 	
 	/*

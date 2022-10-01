@@ -2,7 +2,6 @@
 
 Renderer::Renderer(){
 	m_current_settings = {0.0};
-	initOpenGL();
 }
 
 Renderer::~Renderer(){

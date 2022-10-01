@@ -14,7 +14,8 @@ glm::mat4 toGlmMatrix(FMat4 matrix){
 // Base Shader
 //-------------------------------------------------------------------------------------------------
 BaseShader::BaseShader(){
-
+	m_shader_id = 0;
+	m_is_valid = false;
 }
 
 BaseShader::~BaseShader(){
@@ -26,11 +27,13 @@ BaseShader::~BaseShader(){
 void BaseShader::compileShaders(std::string vert_text, std::string frag_text){
 	/*
 	ATTRIBUTION: This function makes heavy reference to:
-	https://learnopengl.com/Getting-started/Hello-Triangle
+		https://learnopengl.com/Getting-started/Hello-Triangle
 	*/
+
 	m_is_valid = true; // Gets set to false in validate() if something fails
 	m_shader_id = glCreateProgram();
-	unsigned int vert_handle, frag_handle;
+	Uint32 vert_handle;
+	Uint32 frag_handle;
 	const char* v_cstring = vert_text.c_str();
 	const char* f_cstring = frag_text.c_str();
 
@@ -53,7 +56,7 @@ void BaseShader::compileShaders(std::string vert_text, std::string frag_text){
 	glAttachShader(m_shader_id, vert_handle);
 	glAttachShader(m_shader_id, frag_handle);
 	glLinkProgram(m_shader_id);
-	validate(m_shader_id, "Shader Program", vert_text + "\n\n" + frag_text);
+	validate(m_shader_id, "Shader Program", "");
 	
 	// Now that we have a program we can store the uniform locations
 	saveUniformLocations();
@@ -113,41 +116,47 @@ void BaseShader::stop(){
 void BaseShader::destroy(){
 	this -> stop();
 	glDeleteProgram(m_shader_id);
+
+	m_is_valid = false;
+	m_shader_id = 0;
 }
 
 //-----------------------------------------------------------------------------
 void BaseShader::validate(unsigned int id, std::string type, std::string code){
 	/*
 	Checks for errors in the compilation of a shader
-	https://learnopengl.com/Getting-started/Hello-Triangle
+
+	ATTRIBUTION: Error checking
+		https://learnopengl.com/Getting-started/Hello-Triangle
 	*/
-	int success; // Not bool due to the C interface's use of ints
+
+	int is_success; // Not bool due to the C interface's use of ints
 	int buffer_size = 512;
 	char infolog_buffer[buffer_size];
 	
 	if(type != "Shader Program"){
 		// Fragment, vertex, or geometry shader issue
-		glGetShaderiv(id, GL_COMPILE_STATUS, &success);
-		if(!success){
+		glGetShaderiv(id, GL_COMPILE_STATUS, &is_success);
+		if(!is_success){
 			glGetShaderInfoLog(id, buffer_size, NULL, infolog_buffer);
-			std::cout << "ERROR [" << type << "] COMPILATION ERROR\n" << 
-				infolog_buffer << std::endl;
-			std::cout << "SHADER CODE:\n-----------------------\n" << 
-				code << "\n-----------------------\n";
+			printf("ERROR '%s' Compilation Error!\n", type.c_str());
+			printf("InfoLog: %s\n", &infolog_buffer[0]);
+			printf("Shader Code:\n--------------------------------\n"
+				"%s"
+				"\n--------------------------------\n", code.c_str());
 		}
 	}else{
 		// General shader program issue
-		glGetProgramiv(id, GL_LINK_STATUS, &success);
-		if (!success){
+		glGetProgramiv(id, GL_LINK_STATUS, &is_success);
+		if(!is_success){
 			glGetProgramInfoLog(id, buffer_size, NULL, infolog_buffer);
-			std::cout << "ERROR [" << type << "] COMPILATION ERROR\n" << 
-				infolog_buffer << std::endl;
+			printf("ERROR '%s' Compilation Error!\n", type.c_str());
+			printf("InfoLog: %s\n", &infolog_buffer[0]);
 		}
 	}
 
 	// TODO: Potentially add a general error message when this fails
-	m_is_valid &= success;
-	std::cout << "m_is_valid : " << m_is_valid << std::endl;
+	m_is_valid &= is_success;
 }
 
 //-----------------------------------------------------------------------------

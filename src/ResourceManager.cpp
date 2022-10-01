@@ -55,7 +55,7 @@ ResourceHandle ResourceManager::addResource(std::string name, TempTexture data){
 	return new_handle;
 }
 
-TriangleMesh ResourceManager::getDataTriangleMesh(ResourceHandle handle){
+TriangleMesh ResourceManager::getDataTriangleMesh(ResourceHandle handle) const{
 	auto iter = m_metadata_map.find(handle);
 	assert(iter != m_metadata_map.end());
 
@@ -64,7 +64,7 @@ TriangleMesh ResourceManager::getDataTriangleMesh(ResourceHandle handle){
 	return iter2->second;
 }
 
-TempTexture ResourceManager::getDataTexture(ResourceHandle handle){
+TempTexture ResourceManager::getDataTexture(ResourceHandle handle) const{
 	auto iter = m_metadata_map.find(handle);
 	assert(iter != m_metadata_map.end());
 

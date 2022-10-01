@@ -8,17 +8,22 @@ std::pair<bool, Settings> FileIO::loadSettingsFromFile(std::string filepath){
 	Returns a pair of <is_valid, Settings> from a config file.
 	*/
 
-	std::pair<bool, Settings> outcome_pair;
-	outcome_pair.first = false;
+	std::pair<bool, Settings> out_pair;
+	out_pair.first = false;
 
-	Parser::TokenizedFile tokenized_file = Parser::tokenizeFile(filepath);
+	auto [is_tokenization_valid, tokenized_file] = Parser::tokenizeFile(filepath);
+	if(!is_tokenization_valid){
+		return out_pair;
+	}
 	InputBuffer buffer{tokenized_file.text};
 
 	// If the file could be parsed correctly, start turning tokens into
 	// PODstructs and strings as necessary.
-	Parser::SettingsParseResult result = jankParseSettingsFile(tokenized_file);
-	if(result.is_valid){
-		Settings& loaded_settings = outcome_pair.second;
+	auto [is_settings_valid, result] = jankParseSettingsFile(tokenized_file);
+	if(!is_settings_valid){
+		return out_pair;
+	}else{
+		Settings& loaded_settings = out_pair.second;
 		for(auto [namespace_name, namespace_data] : result.namespaces){
 			Settings::Namespace new_namespace;
 			new_namespace.contained_namespaces = namespace_data.namespaces;
@@ -51,7 +56,7 @@ std::pair<bool, Settings> FileIO::loadSettingsFromFile(std::string filepath){
 							break;
 						default:
 							printf("ERROR: Unrecognized token type!\n");
-							return outcome_pair;
+							return out_pair;
 					}
 				}else if(value_token_list.size() < 4){
 					/*
@@ -72,7 +77,7 @@ std::pair<bool, Settings> FileIO::loadSettingsFromFile(std::string filepath){
 
 					if(num_other > 0){
 						printf("ERROR: Vectors can only have Real or Int components!\n");
-						return outcome_pair;
+						return out_pair;
 					}else{
 						// NOTE: I tried doing this a "smarter" way and the void ptr
 						// conversions ended up creating super messy code.
@@ -114,7 +119,7 @@ std::pair<bool, Settings> FileIO::loadSettingsFromFile(std::string filepath){
 				}else{
 					printf("ERROR: Value token list of length %li wasn't valid.\n", 
 						value_token_list.size());
-					return outcome_pair;
+					return out_pair;
 				}
 
 				new_namespace.dict[tokenText(key_token, &buffer)] = value_variant;
@@ -124,8 +129,8 @@ std::pair<bool, Settings> FileIO::loadSettingsFromFile(std::string filepath){
 		}
 	}
 
-	outcome_pair.first = true;
-	return outcome_pair;
+	out_pair.first = true;
+	return out_pair;
 }
 
 std::vector<FileIO::ResourceDeclaration> FileIO::loadResourceDeclarations(std::string filepath){
@@ -155,7 +160,10 @@ std::vector<FileIO::ResourceDeclaration> FileIO::loadResourceDeclarations(std::s
 		{"RiggedSkeletalMesh", RESOURCE_RIGGED_SKELETAL_MESH},
 	};
 
-	Parser::TokenizedFile tokenized_file = Parser::tokenizeFile(filepath);
+	auto [is_valid, tokenized_file] = Parser::tokenizeFile(filepath);
+	if(!is_valid){
+		return declarations;
+	}
 	InputBuffer buffer{tokenized_file.text};
 
 	Int64 read_pos = 0;
@@ -359,9 +367,6 @@ std::unordered_map<std::string, std::string> loadShadersFromFile(std::string fil
 		shader_name_to_text_map[current_block_name] = current_block_contents;	
 	}
 
-	printf("FileIO: Loaded %i entries from file '%s'\n", 
-		(int)shader_name_to_text_map.size(), &filepath[0]);
-	
 	return shader_name_to_text_map;
 }
 

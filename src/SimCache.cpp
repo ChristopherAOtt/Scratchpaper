@@ -41,6 +41,8 @@ void SimCache::generateAccelerationStructures(VoxelKDTree::BuildSettings setting
 	}
 }
 
+
+#if 0
 RayIntersection SimCache::traceRay(Ray ray){
 	Debug::DebugData debug;
 	
@@ -51,7 +53,6 @@ RayIntersection SimCache::traceRay(Ray ray){
 	return intersection;
 }
 
-#if 0
 void SimCache::bulkRayIntersections(const std::vector<Ray>& rays){
 	/*
 	Used to test performance and visualize results

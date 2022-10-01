@@ -22,9 +22,9 @@ RESET := \033[0m
 # -flto: Link-time optimization
 # -pg  : Instrument code for gprof
 # -g   : Instrument code for gdb
-INSTRUMENTATION_FLAGS := #-g # -pg
-OPTIMIZATION_LEVEL := -O3
-LTO_FLAG := -flto
+INSTRUMENTATION_FLAGS := -g # -pg
+OPTIMIZATION_LEVEL := #-O3
+LTO_FLAG := #-flto
 PPROF_FLAGS := -Wl --no-as-needed -lprofiler --as-needed 
 CPPFLAGS := $(INSTRUMENTATION_FLAGS) $(INC_FLAGS) $(LTO_FLAG) -MMD -MP -std=c++17 -Wall $(OPTIMIZATION_LEVEL)
 #FINAL_ARGS := -framework OpenGL -lglfw -lglew  # OSX flags

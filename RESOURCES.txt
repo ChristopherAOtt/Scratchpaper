@@ -1,0 +1,16 @@
+
+//-----------------------------------------------
+// Resource Declarations
+// [Type|ResourceName] = "Filepath.extension"
+//-----------------------------------------------
+[Font|DefaultFont]   = "DefaultFont.otf";
+[Font|SomeOtherFont] = "DefaultFont.ttf";
+
+[RigidTriangleMesh|DroneModel]      = "res/Models/Probe/probe.obj";
+[RigidTriangleMesh|SuperDroneModel] = "SuperdroneDroneModel.obj";
+//[SkeletalMesh|AnimatedNPC]     = "NpcSkeletalMesh321.gltf";
+
+[Texture|StoneDiffuse]  = "StoneDiffuse.png";
+[Texture|StoneSpecular] = "StoneSpecularMap.jpg";
+[Texture|MetalDiffuse]  = "MetalMapTestOne.jpg";
+[Texture|MetalBumpMap]  = "MetalMapBumpmap.bmp";

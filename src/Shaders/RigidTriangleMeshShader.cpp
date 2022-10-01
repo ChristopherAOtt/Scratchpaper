@@ -1,25 +1,24 @@
-#include "ChunkShader.hpp"
+#include "RigidTriangleMeshShader.hpp"
 
-ChunkShader::ChunkShader(){
+RigidTriangleMeshShader::RigidTriangleMeshShader(){
 
 }
 
-ChunkShader::~ChunkShader(){
+RigidTriangleMeshShader::~RigidTriangleMeshShader(){
 
 }
 
 //-----------------------------------------------------------------------------
 
-void ChunkShader::bindAttributes(){
+void RigidTriangleMeshShader::bindAttributes(){
 	bindAttribute(0, "in_pos");
 	bindAttribute(1, "in_uv");
-	bindAttribute(2, "in_blocktype");
-	bindAttribute(3, "in_normal_index");
+	bindAttribute(2, "in_normal");
 	//bindAttribute(3, "in_tangent");
 	//bindAttribute(4, "in_bitangent");
 }
 
-void ChunkShader::saveUniformLocations(){
+void RigidTriangleMeshShader::saveUniformLocations(){
 	m_loc_time = BaseShader::getUniformLocation("time");
 	m_loc_model_matrix = BaseShader::getUniformLocation("model_matrix");
 	m_loc_view_matrix = BaseShader::getUniformLocation("view_matrix");

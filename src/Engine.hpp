@@ -34,6 +34,7 @@ namespace VG{
 			void setTargetWorld(WorldState* world_ptr);
 			void initWindow();
 			void initTargetWorld();
+			void initResourceData(std::string filepath);
 			void runMainLoop();
 
 		private:  // Private functions
@@ -46,6 +47,7 @@ namespace VG{
 			std::shared_ptr<Settings> m_settings_ptr;
 			ChunkManager* m_chunk_manager;
 			SimCache m_simcache;
+			Renderer m_renderer;
 
 			std::shared_ptr<Window> m_window_ptr;
 			bool m_should_run;
