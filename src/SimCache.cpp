@@ -1,5 +1,9 @@
 #include "SimCache.hpp"
 
+Uint64 SimCache::CuboidHasher::operator()(const ICuboid& cuboid) const{
+	return hasher(cuboid.origin) ^ hasher(cuboid.extent);
+}
+
 //-------------------------------------------------------------------------------------------------
 // SimCache
 //-------------------------------------------------------------------------------------------------
@@ -41,6 +45,25 @@ void SimCache::generateAccelerationStructures(VoxelKDTree::BuildSettings setting
 	}
 }
 
+void SimCache::generateMKDTree(ResourceHandle handle, const TriangleMesh& mesh){
+	/*
+
+	*/
+
+	auto iter = m_handle_to_tree_map.find(handle);
+	assert(iter == m_handle_to_tree_map.end());
+	m_handle_to_tree_map[handle] = MeshKDTree::MKDTree(MeshKDTree::buildTree(mesh));
+}
+
+MeshKDTree::MKDTree SimCache::getMeshTree(ResourceHandle handle){
+	/*
+	
+	*/
+
+	auto iter = m_handle_to_tree_map.find(handle);
+	assert(iter != m_handle_to_tree_map.end());
+	return iter->second;
+}
 
 #if 0
 RayIntersection SimCache::traceRay(Ray ray){
@@ -86,9 +109,7 @@ void SimCache::bulkRayIntersections(const std::vector<Ray>& rays){
 
 	m_reference_world->addWidgetData("RayWidgets", ray_widgets, false);
 }
-#endif
 
-#if 0
 void SimCache::traceImage(Camera& camera, Rendering::ImageConfig config){
 	/*
 	TODO: Move into the raytracer.
@@ -138,9 +159,7 @@ void SimCache::traceImage(Camera& camera, Rendering::ImageConfig config){
 
 	saveToPPM(image, "TestOutput.ppm");
 }
-#endif
 
-#if 0
 void SimCache::findIntersectionDiscrepancies(int num_iterations){
 	/*
 	Brute force. Generates rays at random positions and orientations, then collides

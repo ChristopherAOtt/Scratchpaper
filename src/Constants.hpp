@@ -9,8 +9,8 @@ constexpr float TAU = PI * 2;
 constexpr int BITS_PER_BYTE = 8;
 constexpr float ARBITRARY_EPSILON = 0.0000001;
 constexpr float LARGE_FLOAT = 99999999999;
-constexpr uint MAX_INT32_VALUE = INT_MAX;
-constexpr long long int MAX_INT64_VALUE = LLONG_MAX;
+constexpr Uint64 MAX_INT32_VALUE = INT_MAX;
+constexpr Uint64 MAX_INT64_VALUE = LLONG_MAX;
 constexpr Int32 NUM_VERTICES_PER_TRIANGLE = 3;
 
 // Used when indexing into min/max arrays to make the ordering clearer

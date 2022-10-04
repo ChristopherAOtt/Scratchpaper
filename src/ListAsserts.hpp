@@ -1,5 +1,10 @@
 #pragma once
+
+
 #include "Types.hpp"
+#include "Constants.hpp"
+
+#include <type_traits>
 
 /*
 ATTRIBUTION: Using recursive inheritance + variadic templates for arbitrarily

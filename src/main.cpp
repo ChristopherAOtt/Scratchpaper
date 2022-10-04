@@ -46,8 +46,8 @@ WorldState* initWorldState(){
 	RandomGen gen;
 	gen.splitmix = {1234};
 
-	for(int i = 0; i < 10; ++i){
-		FVec3 random_pos = randomUnitNormal(gen) * 20;
+	for(int i = 0; i < 40; ++i){
+		FVec3 random_pos = randomUnitNormal(gen) * (gen.splitmix.next() % 100);
 		FVec3 random_rot = randomUnitNormal(gen);
 
 		auto drone = world_ptr->m_jank_entity_factory.initDefaultDrone(random_pos);
@@ -485,11 +485,60 @@ void threadMembersTest(int argc, char** argv){
 	fake.runAdder(num_iters);
 }
 
+
+#include "QuadRenderer.hpp"
+void framebufferScratch(){
+	std::shared_ptr<Window> window_ptr = std::shared_ptr<Window>(new Window());
+	window_ptr->initWindow();
+	window_ptr->setClearColor({1, 0, 0});
+	assert(window_ptr->isValid());
+
+	IVec2 dims = {16, 16};
+	Uint64 num_pixels = dims.x * dims.y;
+	std::vector<FVec3> color_buffer;
+	color_buffer.reserve(num_pixels);
+	for(Int32 y = 0; y < dims.y; ++y){
+		for(Int32 x = 0; x < dims.x; ++x){
+			FVec3 new_pixel = {x * 16, y * 16, 0};
+			color_buffer.push_back(new_pixel);
+		}
+	}
+
+	std::vector<Uint8> color_bytes;
+	color_bytes.reserve(num_pixels * 3);
+	for(Uint64 i = 0; i < num_pixels; ++i){
+		FVec3& pixel = color_buffer[i];
+		for(int x = 0; x < 3; ++x){
+			color_bytes.push_back((Uint8) pixel[x]);
+		}
+	}
+
+	Uint32 texture_id = textureFromColorBuffer(&color_bytes[0], dims);
+
+	RandomGen gen;
+
+	int sleep_microseconds = 1.75 * 1000000;
+	Uint32 num_iters = 0;
+	QuadRenderer renderer;
+	while(num_iters < 5){
+		window_ptr->clear();
+		window_ptr->pollEvents();  // Updates the viewport size
+
+		renderer.render(texture_id, dims);
+
+		window_ptr->swapBuffers();
+		++num_iters;
+
+		usleep(sleep_microseconds);
+	}
+}
+
 int main(int argc, char** argv){
 	//scratchDeclarationLoading();
 	//testMeshLoad(argc, argv);
 	//scratchFloatMatcher();
 	
+	//framebufferScratch();
 	runEngineMainLoop(argc, argv);
 
 	return 0;

@@ -548,7 +548,7 @@ namespace Hash{
 //--------------------------------------------------------------------------------------------------
 // Assertions
 //--------------------------------------------------------------------------------------------------
-constexpr inline void asserts(){
+constexpr inline void primitiveAsserts(){
 	// These need to be trivially-copyable POD types
 	ListAssert<AssertPrimitive,
 		FVec2, IVec2, FVec3, IVec3, FVec3, FMat4, 

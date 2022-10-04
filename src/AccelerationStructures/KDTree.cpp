@@ -1054,26 +1054,6 @@ VoxelKDTree::TreeData* VoxelKDTree::loadTreeFromFile(std::string filepath,
 //-----------------------------------------------------------------------------
 // Mesh KDTree
 //-----------------------------------------------------------------------------
-/*
-struct TriangleMesh{
-	struct Triangle{
-		FVec3 positions[3];
-		FVec3 normals[3];
-		FVec2 uvs[3];
-	};
-
-	struct NamedRange{
-		std::string name;
-		Range32 range;
-	};
-
-	std::vector<Triangle> triangles;
-	std::vector<NamedRange> material_ranges;
-	std::vector<NamedRange> group_ranges;
-};
-
-*/
-
 MeshKDTree::TreeData MeshKDTree::buildTree(const TriangleMesh& mesh){
 	/*
 	TODO: Actually implement splitting
@@ -1099,3 +1079,14 @@ MeshKDTree::TreeData MeshKDTree::buildTree(const TriangleMesh& mesh){
 	return tree_data;
 }
 
+MeshKDTree::MKDTree::MKDTree(){
+
+}
+
+MeshKDTree::MKDTree::MKDTree(TreeData data){
+	m_data = data;
+}
+
+MeshKDTree::MKDTree::~MKDTree(){
+
+}

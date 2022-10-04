@@ -17,6 +17,10 @@ ICuboid ICuboid::operator*(int scale) const{
 	};
 }
 
+bool ICuboid::operator==(const ICuboid& other) const{
+	return origin == other.origin && extent == other.extent;
+}
+
 void printPODStruct(const ICuboid& cuboid){
 	printf("<Cuboid|Origin:");
 	printPODStruct(cuboid.origin);

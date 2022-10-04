@@ -45,8 +45,8 @@ namespace ENGINE{
 	namespace RAYTRACING{
 		ImageDimensions: {500, 500};
 		TileDimensions: {64, 64};
-		NumRenderThreads: 4;
-		RaysPerPixel: 10;
+		NumRenderThreads: 5;
+		RaysPerPixel: 50;
 		MaxPathLen: 10;
 		ShouldCompressFailedPaths: False;
 

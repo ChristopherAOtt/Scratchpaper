@@ -60,6 +60,12 @@ void Raytracer::setOutputFilepath(std::string filepath){
 	*/
 }
 
+
+void Raytracer::setWindowPtr(std::shared_ptr<Window> window_ptr){
+	m_window_ptr = window_ptr;
+}
+
+
 Image::PixelRGB pixelFromColor(FVec3 color){
 	return {(Uint8)color.x, (Uint8)color.y, (Uint8)color.z};
 }
@@ -112,6 +118,14 @@ void Raytracer::renderImage(const SimCache& cache, Camera camera, RenderSettings
 	constexpr Uint64 ARBITRARY_MAX_TILE_COUNT = 1 << 25; // Keep it somewhere under max Int32.
 	assert(tiles.size() < ARBITRARY_MAX_TILE_COUNT);
 
+	// STEP: Allocate an image
+	Image::Settings image_settings = {
+		Image::PIXELTYPE_RGB,
+		config.num_pixels,
+		.initial_clear=false
+	};
+	Image image(image_settings);
+
 	// TODO: Put this in its own function to declutter
 	settings.sun_direction = settings.sun_direction.normal();
 	TileJob job_template;  // Values that stay the same for all jobs
@@ -143,7 +157,7 @@ void Raytracer::renderImage(const SimCache& cache, Camera camera, RenderSettings
 				// General metadata
 				.simcache_ptr=&cache,
 				.settings=settings,
-				.image_buffer=&m_image_color_buffer[0],
+				.pixel_buffer=&image.pixelRGB(0),
 
 				// Ray positioning info
 				.plane_world_pos=plane_world_pos,
@@ -178,8 +192,10 @@ void Raytracer::renderImage(const SimCache& cache, Camera camera, RenderSettings
 	// TODO: Figure out how to get these constructed in place without this nonsense
 	// extra layer of indirection. With a thread array I can't figure out how to stop
 	// it from stupidly calling the destructor on uninitialized memory.
+	QuadRenderer quad_renderer;
 	Int32 num_threads = settings.num_render_threads;
 	printf("%i tiles, %i worker slots\n", num_tiles, num_threads);
+	Uint32 preview_texture_id = 0;
 	Int32 job_index = 0;
 	std::thread** thread_ptr_arr = (std::thread**) malloc(num_threads * sizeof(std::thread));
 	while(job_index < num_tiles){
@@ -191,34 +207,26 @@ void Raytracer::renderImage(const SimCache& cache, Camera camera, RenderSettings
 			++job_index;
 		}
 
+		// Wait for the batch to finish
 		for(Int32 i = 0; i < num_to_launch; ++i){
 			thread_ptr_arr[i]->join();
 			delete thread_ptr_arr[i];
+		
+			// Render a preview
+			//----------------------------------------
+			m_window_ptr->clear();
+			m_window_ptr->pollEvents();  // Updates the viewport size
+			glDeleteTextures(1, &preview_texture_id);
+			preview_texture_id = textureFromColorBuffer(
+				&image.pixelRGB(0), config.num_pixels);
+			quad_renderer.render(preview_texture_id, config.num_pixels);
+			
+			m_window_ptr->swapBuffers();
 		}
 	}
 	free(thread_ptr_arr);
 
 	// STEP: Write image to file
-	Image::Settings image_settings = {
-		Image::PIXELTYPE_RGB,
-		config.num_pixels,
-		.initial_clear=false
-	};
-
-	Image image(image_settings);
-	Uint64 pixel_index = 0;
-	for(FVec3 color : m_image_color_buffer){
-		// Clamp colors to 0-1 range
-		FVec3 output_color = clamp(color);
-
-		// Gamma correction
-		for(int i = 0; i < 3; ++i){
-			output_color[i] = sqrt(output_color[i]);
-		}
-
-		image.pixelRGB(pixel_index) = pixelFromColor(output_color * 255);
-		++pixel_index;
-	}
 	saveToPPM(image, "TestOutput.ppm");
 	printf("Render complete\a\n");
 }
@@ -434,7 +442,16 @@ void Raytracer::runTileJob(TileJob job){
 	Int32 tile_index_linear = 0;
 	for(Int32 y = 0; y < tile_extent_y; ++y){
 		for(Int32 x = 0; x < tile_extent_x; ++x){
-			job.image_info.image_buffer[image_index_linear++] = color_buffer[tile_index_linear++];
+			FVec3 raw_color = color_buffer[tile_index_linear++];
+			FVec3 output_color;
+
+			// Clamp to range and gamma correct
+			for(int i = 0; i < 3; ++i){
+				output_color[i] = sqrt(clamp(raw_color[i]));
+			}
+
+			Image::PixelRGB pixel = pixelFromColor(output_color * 255);
+			job.image_info.pixel_buffer[image_index_linear++] = pixel;
 		}
 		image_index_linear += image_step_amount;
 	}

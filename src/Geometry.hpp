@@ -1,6 +1,8 @@
 #pragma once
 
+#include "ListAsserts.hpp"
 #include "Primitives.hpp"
+
 #include <vector>
 
 //--------------------------------------------------------------------------------------------------
@@ -55,6 +57,7 @@ struct ICuboid{
 	IVec3 extent;
 
 	ICuboid operator*(int scale) const;
+	bool operator==(const ICuboid& other) const;
 };
 void printPODStruct(const ICuboid& cuboid);
 
@@ -169,38 +172,12 @@ namespace Geometry{
 //--------------------------------------------------------------------------------------------------
 // Assertions
 //--------------------------------------------------------------------------------------------------
-static_assert(std::is_pod<FSphere>::value,   "FSphere must be POD");
-static_assert(std::is_pod<FCuboid>::value,   "FCuboid must be POD");
-static_assert(std::is_pod<FCylinder>::value, "FCylinder must be POD");
-static_assert(std::is_pod<FCone>::value,     "FCone must be POD");
-static_assert(std::is_pod<FRect>::value,     "FRect must be POD");
-static_assert(std::is_pod<FLine>::value,     "FLine must be POD");
-static_assert(std::is_pod<FPlane>::value,    "FPlane must be POD");
-static_assert(std::is_pod<ICuboid>::value,   "ICuboid must be POD");
+constexpr inline void geometryAsserts(){
+	// These need to be trivially-copyable POD types
+	ListAssert<AssertPrimitive,
+		FSphere, FCuboid, FCylinder, FCone, FRect, FLine, FPlane, 
+		GeometricPrimitive, Ray, Basis> a;
 
-static_assert(std::is_pod<GeometricPrimitive>::value,  "GeometricPrimitive must be POD");
-static_assert(std::is_pod<Ray>::value,                 "Ray must be POD");
-static_assert(std::is_pod<Basis>::value,               "Basis must be POD");
-
-static_assert(std::is_trivially_copyable<FSphere>::value,
-	"FSphere must be trivially copyable");
-static_assert(std::is_trivially_copyable<FCuboid>::value,
-	"FCuboid must be trivially copyable");
-static_assert(std::is_trivially_copyable<FCylinder>::value,
-	"FCylinder must be trivially copyable");
-static_assert(std::is_trivially_copyable<FCone>::value,
-	"FCone must be trivially copyable");
-static_assert(std::is_trivially_copyable<FRect>::value,
-	"FRect must be trivially copyable");
-static_assert(std::is_trivially_copyable<FLine>::value,
-	"FLine must be trivially copyable");
-static_assert(std::is_trivially_copyable<FPlane>::value,
-	"FPlane must be trivially copyable");
-static_assert(std::is_trivially_copyable<ICuboid>::value,
-	"ICuboid must be trivially copyable");
-static_assert(std::is_trivially_copyable<GeometricPrimitive>::value,
-	"GeometricPrimitive must be trivially copyable");
-static_assert(std::is_trivially_copyable<Ray>::value,
-	"Ray must be trivially copyable");
-static_assert(std::is_trivially_copyable<Basis>::value,
-	"Basis must be trivially copyable");
+	// These have the additional restriction of needing unique representattions.
+	ListAssert<AssertUniquePrimitive, ICuboid> b;
+}

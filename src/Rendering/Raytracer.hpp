@@ -7,9 +7,12 @@
 #include "SystemMessages.hpp"
 #include "Colors.hpp"
 #include "Debug.hpp"
+#include "Window.hpp"
+#include "QuadRenderer.hpp"
 
 #include <thread>
 #include <string.h>  // For memset
+#include <memory>
 
 struct RandomGen{
 	// Normally distributed, slow
@@ -150,7 +153,7 @@ class Raytracer{
 				// General metadata
 				const SimCache* simcache_ptr;
 				RenderSettings settings;
-				FVec3* image_buffer;
+				Image::PixelRGB* pixel_buffer;
 
 				// Position info used to orient rays
 				FVec3 plane_world_pos;
@@ -196,6 +199,7 @@ class Raytracer{
 		
 		void sendInstruction(SystemInstruction instruction);
 		void setOutputFilepath(std::string filepath);
+		void setWindowPtr(std::shared_ptr<Window> window_ptr);
 		void renderImage(const SimCache& cache, Camera camera, RenderSettings settings);
 		void visualizePaths(const SimCache& cache, std::vector<Ray> rays);
 		void renderPreview(const SimCache& cache, Camera camera, Rendering::ImageConfig config);
@@ -211,6 +215,9 @@ class Raytracer{
 		ImageFormat m_format;
 		std::vector<Bytes1> m_random_buffer;
 		std::vector<FVec3> m_image_color_buffer;
+		std::vector<Image::PixelRGB> m_pixel_buffer;
+
+		std::shared_ptr<Window> m_window_ptr;
 
 		RandomGen m_default_random;
 

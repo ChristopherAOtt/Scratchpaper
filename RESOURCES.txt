@@ -7,6 +7,7 @@
 [Font|SomeOtherFont] = "DefaultFont.ttf";
 
 [RigidTriangleMesh|DroneModel]      = "res/Models/Probe/probe.obj";
+//[RigidTriangleMesh|DroneModel]      = "res/TestObjs/Citadel.obj";
 [RigidTriangleMesh|SuperDroneModel] = "SuperdroneDroneModel.obj";
 //[SkeletalMesh|AnimatedNPC]     = "NpcSkeletalMesh321.gltf";
 

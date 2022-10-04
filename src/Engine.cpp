@@ -576,6 +576,7 @@ void VG::Engine::runMainLoop(){
 	WorldState* world_state = m_simcache.m_reference_world;
 
 	Raytracer raytracer;
+	raytracer.setWindowPtr(m_window_ptr);
 	Camera camera = initDefaultCamera();
 	PlaceholderEntity& player = world_state->m_placeholder_entities[0];
 	assert(player.handle.type_index == (Uint32) EntityType::ENTITY_PLAYER);

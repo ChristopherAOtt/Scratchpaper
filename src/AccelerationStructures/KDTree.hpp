@@ -399,6 +399,7 @@ namespace MeshKDTree{
 
 	class MKDTree{
 		public:
+			MKDTree();
 			MKDTree(TreeData data);
 			~MKDTree();
 
