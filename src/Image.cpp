@@ -5,10 +5,10 @@ Image::Image(Image::Settings settings){
 	Int64 num_pixels = settings.dimensions.x * settings.dimensions.y;
 	Int64 num_bytes = num_pixels * PIXEL_TYPE_SIZES[settings.type];
 	
-	if(!(num_bytes < ARBITRARY_MAX_IMAGE_SIZE)){
+	if(!(num_bytes < ARBITRARY_MAX_IMAGE_SIZE && num_bytes > 0)){
 		printf("NumBytes %li\n", num_bytes);
+		assert(false);
 	}
-	assert(num_bytes < ARBITRARY_MAX_IMAGE_SIZE);
 	
 	m_type = settings.type;
 	m_dimensions = settings.dimensions;

@@ -323,8 +323,8 @@ void OpenGLModule::render(const SimCache& state, const Camera& camera,
 			continue;
 		}
 
-		// TODO: Support rotation
-		FMat4 model_matrix = MathUtils::Matrix::makeModelMatrix(entity.position);
+		FMat4 model_matrix = MathUtils::Matrix::makeModelMatrix(
+			entity.position, entity.basis);
 		m_rigid_triangle_mesh_shader->setModelMatrix(model_matrix);
 
 		glDrawElements(

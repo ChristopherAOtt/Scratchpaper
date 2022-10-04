@@ -4,6 +4,7 @@
 #include "Primitives.hpp"
 #include "Meshes.hpp"
 #include "MathUtils.hpp"
+#include "KDTree.hpp"
 
 #include <unordered_set>
 #include <unordered_map>
@@ -32,6 +33,7 @@ class ResourceManager{
 		ResourceHandle handleByName(std::string name) const;
 
 		ResourceHandle addResource(std::string name, TriangleMesh data);
+		ResourceHandle addResource(std::string name, VoxelKDTree::TreeData data);
 		ResourceHandle addResource(std::string name, TempTexture data);
 
 		TriangleMesh getDataTriangleMesh(ResourceHandle handle) const;
@@ -43,6 +45,7 @@ class ResourceManager{
 	private:
 		// Different resource type maps
 		std::unordered_map<ResourceId, TriangleMesh> m_rigid_triangle_mesh_map;
+		std::unordered_map<ResourceId, VoxelKDTree::TreeData> m_mkdtree_map;
 		std::unordered_map<ResourceId, TempTexture> m_texture_map;
 		
 		// Id and metadata handling

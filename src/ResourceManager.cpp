@@ -32,26 +32,36 @@ ResourceHandle ResourceManager::handleByName(std::string name) const{
 ResourceHandle ResourceManager::addResource(std::string name, TriangleMesh data){
 	ResourceId new_id = generateNewId();
 	ResourceHandle new_handle = {.type=RESOURCE_RIGID_TRIANGLE_MESH, .id=new_id};
-	ResourceMetadata new_metadata = {
+	m_metadata_map[new_handle] = {
 		.handle=new_handle,
 		.name=name
 	};
 
 	m_rigid_triangle_mesh_map[new_id] = data;
-	m_metadata_map[new_handle] = new_metadata;
+	return new_handle;
+}
+
+ResourceHandle ResourceManager::addResource(std::string name, VoxelKDTree::TreeData data){
+	ResourceId new_id = generateNewId();
+	ResourceHandle new_handle = {.type=RESOURCE_MKDTREE, .id=new_id};
+	m_metadata_map[new_handle] = {
+		.handle=new_handle,
+		.name=name
+	};
+
+	m_mkdtree_map[new_id] = data;
 	return new_handle;
 }
 
 ResourceHandle ResourceManager::addResource(std::string name, TempTexture data){
 	ResourceId new_id = generateNewId();
 	ResourceHandle new_handle = {.type=RESOURCE_TEXTURE, .id=new_id};
-	ResourceMetadata new_metadata = {
+	m_metadata_map[new_handle] = {
 		.handle=new_handle,
 		.name=name
 	};
 
 	m_texture_map[new_id] = data;
-	m_metadata_map[new_handle] = new_metadata;
 	return new_handle;
 }
 

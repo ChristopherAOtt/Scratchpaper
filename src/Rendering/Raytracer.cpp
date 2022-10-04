@@ -227,7 +227,7 @@ void Raytracer::renderImage(const SimCache& cache, Camera camera, RenderSettings
 	free(thread_ptr_arr);
 
 	// STEP: Write image to file
-	saveToPPM(image, "TestOutput.ppm");
+	//saveToPPM(image, "TestOutput.ppm");
 	printf("Render complete\a\n");
 }
 
@@ -396,7 +396,7 @@ void Raytracer::runTileJob(TileJob job){
 	std::vector<FVec3> color_buffer(num_pixels, COLOR_BLACK);
 	std::vector<Ray> ray_buffer(num_pixels, Ray{});
 
-	// Trace paths, calculate colors, and update color buffer.
+	// STEP: Trace paths, calculate colors, and update pixel buffer.
 	for(Int32 r = 0; r < settings.num_rays_per_pixel; ++r){
 		// Fill the ray buffer with new rays
 		Int32 ray_index = 0;
@@ -436,15 +436,15 @@ void Raytracer::runTileJob(TileJob job){
 		}
 	}
 
-	// All color information has been updated. Write it out to the image buffer.
+	// STEP: All color information has been updated. Write it out to the image buffer.
 	Int64 image_index_linear = tile.range_x.origin + image_extent_x * tile.range_y.origin;
 	Int64 image_step_amount = image_extent_x - tile_extent_x;
 	Int32 tile_index_linear = 0;
 	for(Int32 y = 0; y < tile_extent_y; ++y){
 		for(Int32 x = 0; x < tile_extent_x; ++x){
-			FVec3 raw_color = color_buffer[tile_index_linear++];
 			FVec3 output_color;
-
+			FVec3 raw_color = color_buffer[tile_index_linear++];
+			
 			// Clamp to range and gamma correct
 			for(int i = 0; i < 3; ++i){
 				output_color[i] = sqrt(clamp(raw_color[i]));
@@ -497,12 +497,11 @@ void Raytracer::tracePaths(const SimCache* cache_ptr, const std::vector<Ray>& ra
 		Int32 path_len = 0;
 		while(path_len < buffer.max_path_len){
 			// STEP: Intersection tests
-			// VKDT intersection
 			PathVertex curr_vertex;
 			curr_vertex.source_ray = curr_ray;
 			curr_vertex.material_index = 0;
 
-			// Tree Intersection
+			// VKDTree Intersection
 			RayIntersection curr_hit{INTERSECT_MISS};
 			curr_hit = Intersection::intersectTree(curr_ray, 
 				cache_ptr->m_kd_tree_ptr, stack);
@@ -510,6 +509,9 @@ void Raytracer::tracePaths(const SimCache* cache_ptr, const std::vector<Ray>& ra
 				// TODO: Follow up with chunk trace if this happens
 				// NOTE: For now I'm just making the offending areas glow bright red.
 			}
+
+			// MKDTree Intersection
+			
 			
 			// Portal intersection
 			// TODO: Move to function

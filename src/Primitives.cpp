@@ -336,6 +336,20 @@ void printPODStruct(const FVec4& vec){
 //--------------------------------------
 // FMat4
 //--------------------------------------
+FMat4 FMat4::initIdentity(){
+	/*
+
+	*/
+
+	FMat4 output;
+	for(int y = 0; y < 4; ++y){
+		for(int x = 0; x < 4; ++x){
+			output[x][y] = (x == y);
+		}
+	}
+	return output;
+}
+
 float FMat4::determinant() const{
 	/*
 	TODO: Figure out a non-awful way of doing this

@@ -179,7 +179,7 @@ FMat4 MathUtils::Matrix::makeChunkModelMatrix(const IVec3& chunkpos){
 	return fromGlm(output);
 }
 
-FMat4 MathUtils::Matrix::makeModelMatrix(const FVec3& position){
+FMat4 MathUtils::Matrix::makeModelMatrix(FVec3 position){
 	glm::mat4 output;
 
 	//glm::vec3 rot = toGlm(entity.rotation);
@@ -199,6 +199,28 @@ FMat4 MathUtils::Matrix::makeModelMatrix(const FVec3& position){
 	output = glm::scale(output, sca);
 
 	return fromGlm(output);
+}
+
+FMat4 MathUtils::Matrix::makeModelMatrix(FVec3 position, Basis basis){
+	/*
+	
+	*/
+
+	const FVec3 vectors[] = {
+		basis.v0,
+		basis.v1,
+		basis.v2,
+		position
+	};
+
+	FMat4 output = {};
+	for(int i = 0; i < 4; ++i){
+		const FVec3& next_vec = vectors[i];
+		output[i] = {next_vec[0], next_vec[1], next_vec[2], 0};
+	}
+	output[3][3] = 1;
+	
+	return output;
 }
 
 FMat4 MathUtils::Matrix::initIdentityMatrix(){

@@ -44,15 +44,15 @@ namespace ENGINE{
 
 	namespace RAYTRACING{
 		ImageDimensions: {500, 500};
-		TileDimensions: {64, 64};
+		TileDimensions: {32, 32};
 		NumRenderThreads: 5;
-		RaysPerPixel: 50;
+		RaysPerPixel: 200;
 		MaxPathLen: 10;
 		ShouldCompressFailedPaths: False;
 
 		SkyColor: {0.5294, 0.8078, 0.9216};
 		SunColor: {0.9980, 0.8314, 0.2510};
-		SkyBrightnessMultiplier: 2.15;
+		SkyBrightnessMultiplier: 0.15;
 		SunBrightnessMultiplier: 0.0; //10.0;
 		SunDirection: {0.7, 0.9, 0.9};
 	};

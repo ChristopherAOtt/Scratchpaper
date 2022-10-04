@@ -12,7 +12,8 @@ namespace MathUtils{
 		FMat4 makePerspectiveProjectionMatrix(const Camera& camera);
 		FMat4 makeViewMatrix(const Camera& camera);
 		FMat4 makeChunkModelMatrix(const IVec3& chunkpos);
-		FMat4 makeModelMatrix(const FVec3& position);
+		FMat4 makeModelMatrix(FVec3 position);
+		FMat4 makeModelMatrix(FVec3 position, Basis basis);
 
 		FMat4 initIdentityMatrix();
 	}

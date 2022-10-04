@@ -37,24 +37,6 @@ WorldState* initWorldState(){
 		}
 	};
 
-	// Init the player entity
-	FVec3 player_pos = FVec3{0.5, -1.5, 0.2};
-	auto player = world_ptr->m_jank_entity_factory.initDefaultPlayer(player_pos);
-	world_ptr->m_placeholder_entities.push_back(player);
-	world_ptr->m_viewer_entity_index = 0;
-
-	RandomGen gen;
-	gen.splitmix = {1234};
-
-	for(int i = 0; i < 40; ++i){
-		FVec3 random_pos = randomUnitNormal(gen) * (gen.splitmix.next() % 100);
-		FVec3 random_rot = randomUnitNormal(gen);
-
-		auto drone = world_ptr->m_jank_entity_factory.initDefaultDrone(random_pos);
-		drone.basis = rotateElementwise(DEFAULT_BASIS, random_rot.x, random_rot.y);
-		world_ptr->m_placeholder_entities.push_back(drone);
-	}
-	
 	// Basis vectors at the center of the world.
 	FVec2 dummy_uv = {0, 0};
 	std::vector<Widget> default_widgets;
@@ -73,6 +55,25 @@ WorldState* initWorldState(){
 		};
 
 		default_widgets.push_back(axis_widget);
+	}
+
+	// Init the player entity
+	FVec3 player_pos = FVec3{0.5, -1.5, 0.2};
+	auto player = world_ptr->m_jank_entity_factory.initDefaultPlayer(player_pos);
+	world_ptr->m_placeholder_entities.push_back(player);
+	world_ptr->m_viewer_entity_index = 0;
+
+	RandomGen gen;
+	gen.splitmix = {1234};
+
+	for(int i = 0; i < 40; ++i){
+		Int32 distance = gen.splitmix.next() % 1000;
+		FVec3 random_pos = randomUnitNormal(gen) * distance;
+		FVec3 random_rot = randomUnitNormal(gen) * 360;
+
+		auto drone = world_ptr->m_jank_entity_factory.initDefaultDrone(random_pos);
+		drone.basis = rotateElementwise(DEFAULT_BASIS, random_rot.x, random_rot.y);
+		world_ptr->m_placeholder_entities.push_back(drone);
 	}
 
 	// Add some scratch visualizations

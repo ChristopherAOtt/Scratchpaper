@@ -214,6 +214,8 @@ void printPODStruct(const FVec4& vec);
 struct FMat4{
 	FVec4 r0, r1, r2, r3;
 
+	static FMat4 initIdentity();
+
 	float determinant() const;
 	FMat4 transposition() const;
 	FMat4 inverse() const;
@@ -459,6 +461,7 @@ enum ResourceType{
 	RESOURCE_TEXTURE,
 	RESOURCE_RIGID_TRIANGLE_MESH,
 	RESOURCE_RIGGED_SKELETAL_MESH,
+	RESOURCE_MKDTREE,
 };
 
 constexpr const char* RESOURCE_STRINGS[] = {
@@ -467,6 +470,7 @@ constexpr const char* RESOURCE_STRINGS[] = {
 	"RESOURCE_TEXTURE",
 	"RESOURCE_RIGID_TRIANGLE_MESH",
 	"RESOURCE_RIGGED_SKELETAL_MESH",
+	"RESOURCE_MKDTREE",
 };
 
 typedef Uint32 ResourceId;
