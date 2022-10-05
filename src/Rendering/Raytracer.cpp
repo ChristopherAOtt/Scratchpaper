@@ -97,19 +97,10 @@ void Raytracer::renderImage(const SimCache& cache, Camera camera, RenderSettings
 	REFACTOR: Break this up into separate functions
 	*/
 
-	// Init image buffer
-	// TODO: Move to separate function
-	// TODO: Support adding to a previous render.
+	// TODO: Support the option to refine a previous render.
 	Rendering::ImageConfig& config = settings.image_config;
 	bool should_reuse_color_data = false;
-	Uint64 num_pixels = config.num_pixels.x * config.num_pixels.y;
-	Int32 pixels_per_tile = config.tile_dims.x * config.tile_dims.y;
-	if(m_image_color_buffer.size() != num_pixels){
-		m_image_color_buffer.resize(num_pixels);
-	}
-	if(!should_reuse_color_data){
-		memset(&m_image_color_buffer[0], 0, num_pixels * sizeof(FVec3));
-	}
+	m_scratch_image.resize(config.num_pixels);
 
 	// Init image tiles
 	std::vector<Rendering::ImageTile> tiles = Rendering::tiles(camera, config);
@@ -117,14 +108,6 @@ void Raytracer::renderImage(const SimCache& cache, Camera camera, RenderSettings
 	Int32 num_tiles = (Int32) tiles.size();
 	constexpr Uint64 ARBITRARY_MAX_TILE_COUNT = 1 << 25; // Keep it somewhere under max Int32.
 	assert(tiles.size() < ARBITRARY_MAX_TILE_COUNT);
-
-	// STEP: Allocate an image
-	Image::Settings image_settings = {
-		Image::PIXELTYPE_RGB,
-		config.num_pixels,
-		.initial_clear=false
-	};
-	Image image(image_settings);
 
 	// TODO: Put this in its own function to declutter
 	settings.sun_direction = settings.sun_direction.normal();
@@ -157,7 +140,7 @@ void Raytracer::renderImage(const SimCache& cache, Camera camera, RenderSettings
 				// General metadata
 				.simcache_ptr=&cache,
 				.settings=settings,
-				.pixel_buffer=&image.pixelRGB(0),
+				.pixel_buffer=(Image::PixelRGB*)m_scratch_image.dataPtr(),
 
 				// Ray positioning info
 				.plane_world_pos=plane_world_pos,
@@ -171,6 +154,7 @@ void Raytracer::renderImage(const SimCache& cache, Camera camera, RenderSettings
 
 	// Init a job object for each tile
 	RandomGen tile_random_gen;
+	Int32 pixels_per_tile = config.tile_dims.x * config.tile_dims.y;
 	std::vector<TileJob> tile_jobs;
 	tile_jobs.reserve(num_tiles);
 	for(Int32 i = 0; i < num_tiles; ++i){
@@ -188,17 +172,26 @@ void Raytracer::renderImage(const SimCache& cache, Camera camera, RenderSettings
 		tile_jobs.push_back(filled_job_struct);
 	}
 
+	// This renders a preview first so that progress updates are made
+	// over the preview image instead of a black background.
+	// TODO: Option to disable preview for headless renders
+	if(true){
+		renderPreview(cache, camera, config, false);	
+	}else{
+		Uint64 num_image_bytes = config.tile_dims.x * config.tile_dims.y * sizeof(Image::PixelRGB);
+		memset(m_scratch_image.dataPtr(), 0, num_image_bytes);
+	}
+	
 	// Run the jobs in batches
 	// TODO: Figure out how to get these constructed in place without this nonsense
 	// extra layer of indirection. With a thread array I can't figure out how to stop
 	// it from stupidly calling the destructor on uninitialized memory.
-	QuadRenderer quad_renderer;
 	Int32 num_threads = settings.num_render_threads;
 	printf("%i tiles, %i worker slots\n", num_tiles, num_threads);
-	Uint32 preview_texture_id = 0;
 	Int32 job_index = 0;
 	std::thread** thread_ptr_arr = (std::thread**) malloc(num_threads * sizeof(std::thread));
-	while(job_index < num_tiles){
+	bool should_abort_render = false;
+	while(job_index < num_tiles && !should_abort_render){
 		Int32 num_to_launch = min(num_threads, num_tiles - job_index);
 		printf("Running new batch of %i tiles (%i/%i complete)\n", 
 			num_to_launch, job_index, num_tiles);
@@ -214,21 +207,31 @@ void Raytracer::renderImage(const SimCache& cache, Camera camera, RenderSettings
 		
 			// Render a preview
 			//----------------------------------------
-			m_window_ptr->clear();
-			m_window_ptr->pollEvents();  // Updates the viewport size
-			glDeleteTextures(1, &preview_texture_id);
-			preview_texture_id = textureFromColorBuffer(
-				&image.pixelRGB(0), config.num_pixels);
-			quad_renderer.render(preview_texture_id, config.num_pixels);
-			
-			m_window_ptr->swapBuffers();
+			renderImageToQuad(m_scratch_image, false);
+
+			m_window_ptr->pollEvents();
+			should_abort_render = m_window_ptr->isKeyInState(
+				KeyEventType::KEY_PRESSED, KEY_BACKSPACE);
 		}
 	}
 	free(thread_ptr_arr);
+	
+	if(should_abort_render){
+		printf("Render aborted by user\n");
+	}else{
+		printf("Render complete. Press ENTER to save or anything else to discard.\a\n");
+		renderImageToQuad(m_scratch_image, true);
 
-	// STEP: Write image to file
-	//saveToPPM(image, "TestOutput.ppm");
-	printf("Render complete\a\n");
+		m_window_ptr->pollEvents();
+		bool should_save_output = m_window_ptr->isKeyInState(KeyEventType::KEY_PRESSED, KEY_ENTER);
+		if(should_save_output){
+			std::string filepath = "TestOutput.ppm";
+			printf("Saved image to file '%s'\n", filepath.c_str());
+			saveToPPM(m_scratch_image, filepath);
+		}else{
+			printf("User opted to discard the image.\n");
+		}
+	}
 }
 
 void Raytracer::visualizePaths(const SimCache& cache, std::vector<Ray> rays){
@@ -295,6 +298,15 @@ void Raytracer::visualizePaths(const SimCache& cache, std::vector<Ray> rays){
 
 void Raytracer::renderPreview(const SimCache& cache, Camera camera, Rendering::ImageConfig config){
 	/*
+	Wrapper function to make calls to the renderPreview function easier to work with
+	*/
+
+	renderPreview(cache, camera, config, true);
+}
+
+void Raytracer::renderPreview(const SimCache& cache, Camera camera, Rendering::ImageConfig config, 
+	bool is_interactive){
+	/*
 	Renders a quick preview of the scene
 	*/
 
@@ -327,13 +339,8 @@ void Raytracer::renderPreview(const SimCache& cache, Camera camera, Rendering::I
 		}
 	}
 
-	Image::Settings settings = {
-		Image::PIXELTYPE_RGB,
-		config.num_pixels,
-		.initial_clear=false
-	};
+	m_scratch_image.resize(config.num_pixels);
 
-	Image image(settings);
 	float t_range = hit_extremes[INDEX_VALUE_MAX] - hit_extremes[INDEX_VALUE_MIN];
 	for(Int32 i = 0; i < num_rays; ++i){
 		PathVertex& ray_path = buffer.vertices[i];
@@ -358,11 +365,40 @@ void Raytracer::renderPreview(const SimCache& cache, Camera camera, Rendering::I
 		FVec3 color = (1 - depth) * material_color;
 
 		for(int x = 0; x < 3; ++x){
-			image.pixelRGB(i).colors[x] = clamp((int) (color[x] * 255), 0, 255);
+			m_scratch_image.pixelRGB(i).colors[x] = clamp((int) (color[x] * 255), 0, 255);
 		}
 	}
 
-	saveToPPM(image, "TestOutput.ppm");
+	//----------------------------------------
+	// Render a preview
+	//----------------------------------------
+	renderImageToQuad(m_scratch_image, is_interactive);
+	//saveToPPM(m_scratch_image, "TestOutput.ppm");
+}
+
+void Raytracer::renderImageToQuad(Image& image, bool should_wait_for_input){
+	/*
+	Renders an image to the screen. 
+	
+	If should_wait_for_input is True then the image will remain until 
+	a key is pressed.
+	*/
+
+	constexpr Int32 num_microseconds = 0.050 * 1000000;
+
+	IVec2 image_dims = image.dimensions();
+	Uint32 preview_texture_id = textureFromColorBuffer(image.dataPtr(), image_dims);
+	m_quad_renderer.render(preview_texture_id, image_dims);
+	glDeleteTextures(1, &preview_texture_id);
+
+	m_window_ptr->swapBuffers();
+	while(should_wait_for_input){
+		usleep(num_microseconds);
+
+		m_window_ptr->pollEvents();
+		auto inputs = m_window_ptr->getInputEvents();
+		should_wait_for_input = (inputs.size() == 0);
+	}
 }
 
 void Raytracer::runTileJob(TileJob job){

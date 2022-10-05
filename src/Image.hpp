@@ -58,6 +58,7 @@ class Image{
 		};
 
 	public:
+		Image();
 		Image(Settings settings);
 		~Image();
 
@@ -65,19 +66,23 @@ class Image{
 		PixelType type() const;
 		IVec2 dimensions() const;
 		Int32 maxSaturation() const;
+		void resize(IVec2 new_dims);
 
 		// Pixel manipulation
 		PixelMonochrome& pixelMonochrome(Int64 pixel_index);
 		PixelRGB&        pixelRGB(Int64 pixel_index);
 		PixelRGBA&       pixelRGBA(Int64 pixel_index);
+		void* dataPtr();
 
 	private:
+		void init(Settings settings);
 		void assertPixelIndexInBounds(Int64 pixel_index, PixelType type, 
 			Int64 num_pixels=1);
 
 	private:
 		PixelType m_type;
 		IVec2 m_dimensions;
+		
 		Int64 m_num_bytes;
 		void* m_data_ptr;
 };

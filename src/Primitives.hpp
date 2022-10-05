@@ -120,6 +120,7 @@ struct IVec2{
 	IVec2 operator*(int scalar) const;
 	IVec2 operator*(float scalar) const;
 	bool operator==(const IVec2& other) const;
+	bool operator!=(const IVec2& other) const;
 	int& operator[](const int index);
 	int operator[](const int index) const;
 };

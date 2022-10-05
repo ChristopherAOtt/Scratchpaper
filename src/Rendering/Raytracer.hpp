@@ -13,6 +13,7 @@
 #include <thread>
 #include <string.h>  // For memset
 #include <memory>
+#include <unistd.h> // For Sleep
 
 struct RandomGen{
 	// Normally distributed, slow
@@ -205,6 +206,8 @@ class Raytracer{
 		void renderPreview(const SimCache& cache, Camera camera, Rendering::ImageConfig config);
 
 	private:
+		void renderPreview(const SimCache& cache, Camera camera, Rendering::ImageConfig config, bool is_interactive);
+		void renderImageToQuad(Image& image, bool should_wait_for_input);
 		void runTileJob(TileJob job);
 		void tracePaths(const SimCache* cache_ptr, const std::vector<Ray>& rays, 
 			const PathBuffer& buffer, RandomGen& random_gen) const;
@@ -212,14 +215,13 @@ class Raytracer{
 			RenderSettings settings) const;
 
 	private:
+		Image m_scratch_image;
 		ImageFormat m_format;
-		std::vector<Bytes1> m_random_buffer;
-		std::vector<FVec3> m_image_color_buffer;
-		std::vector<Image::PixelRGB> m_pixel_buffer;
 
 		std::shared_ptr<Window> m_window_ptr;
 
 		RandomGen m_default_random;
+		QuadRenderer m_quad_renderer;
 
 	public:  // TODO: Better method of setting these values
 		bool m_should_compress_failed_paths;

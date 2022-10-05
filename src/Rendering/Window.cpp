@@ -134,6 +134,58 @@ bool Window::isKeyInState(KeyEventType type, int keycode){
 	return false;
 }
 
+std::vector<InputEvent> Window::getInputEvents(){
+	/*
+	Gathers input from the GLFW window and returns a list of InputEvent structs
+	*/
+
+	std::vector<InputEvent> events;
+
+	//-------------------------------------------------------
+	// Keyboard Inputs
+	//-------------------------------------------------------
+	// YAGNI: More efficient query method
+	KeyEventType queried_key_types[] = {
+		KeyEventType::KEY_PRESSED,
+		KeyEventType::KEY_HELD,
+
+		// Seems to fire for any non-pressed key
+		//KeyEventType::KEY_RELEASED  
+	};
+	for(KeyEventType keytype : queried_key_types){
+		// 65 - 90 is ASCII range
+		// NOTE: 31 and below are invalid
+		for(int keycode = 32; keycode <= 348; ++keycode){ 
+			if(isKeyInState(keytype, keycode)){
+				InputEvent new_event;
+				new_event.source_type = InputSourceType::DEVICE_KEYBOARD;
+				new_event.keyboard.event_type = keytype;
+				new_event.keyboard.keycode = keycode;
+
+				events.push_back(new_event);
+			}
+		}
+	}
+
+	//-------------------------------------------------------
+	// Mouse Inputs
+	//-------------------------------------------------------
+	// TODO: Actual mouse inputs
+
+	//-------------------------------------------------------
+	// Controller Type1 Inputs
+	//-------------------------------------------------------
+	// TODO: Actual controller inputs
+
+	// Catch configuration issues before they go any further
+	for(InputEvent event : events){
+		assert(event.source_type != InputSourceType::DEVICE_INVALID);
+		assert(event.source_type != InputSourceType::DEVICE_UNRECOGNIZED);
+	}
+
+	return events;
+}
+
 void Window::setFullscreenState(bool is_fullscreen){
 	GLFWmonitor* monitor = NULL;
 	int new_width = m_window_dims.x;
@@ -173,5 +225,3 @@ void Window::setClearColor(FVec3 color){
 void Window::clear(){	
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
-
-

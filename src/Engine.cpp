@@ -644,7 +644,7 @@ void VG::Engine::runMainLoop(){
 			IVec2 window_dims = m_window_ptr->getWindowDimensions();
 			camera.aspect_ratio = (float) window_dims.x / (float) window_dims.y;
 
-			std::vector<InputEvent> inputs = getInputEvents();
+			std::vector<InputEvent> inputs = m_window_ptr->getInputEvents();
 			std::vector<UnitOrder> orders = ordersFromInputs(inputs);
 			player = handlePlayerOrders(player, orders, target_frametime);
 			camera = snapCameraToPlayerView(camera, player);
@@ -814,59 +814,22 @@ void VG::Engine::runMainLoop(){
 
 std::vector<InputEvent> VG::Engine::getInputEvents(){
 	/*
-	Gathers input from the GLFW window and returns a list of InputEvent structs
+
 	*/
 
-	std::vector<InputEvent> events;
+	std::vector<InputEvent> input_events;
 
-	if(m_window_ptr){
-		//-------------------------------------------------------
-		// Keyboard inputs here
-		//-------------------------------------------------------
-		// YAGNI: More efficient query method
-		KeyEventType queried_key_types[] = {
-			KeyEventType::KEY_PRESSED,
-			KeyEventType::KEY_HELD,
+	//-------------------------------------------------------
+	// Network Inputs
+	//-------------------------------------------------------
+	// TODO: Saved Inputs
 
-			// Seems to fire for any non-pressed key
-			//KeyEventType::KEY_RELEASED  
-		};
-		for(KeyEventType keytype : queried_key_types){
-			// 65 - 90 is ASCII range
-			// NOTE: 31 and below are invalid
-			for(int keycode = 32; keycode <= 348; ++keycode){ 
-				if(m_window_ptr -> isKeyInState(keytype, keycode)){
-					InputEvent new_event;
-					new_event.source_type = InputSourceType::DEVICE_KEYBOARD;
-					new_event.keyboard.event_type = keytype;
-					new_event.keyboard.keycode = keycode;
+	//-------------------------------------------------------
+	// Saved Inputs (For replay functionality)
+	//-------------------------------------------------------
+	// TODO: Saved Inputs
 
-					events.push_back(new_event);
-				}
-			}
-		}
-
-		//-------------------------------------------------------
-		// Mouse inputs here
-		//-------------------------------------------------------
-		// TODO: Actual mouse inputs
-
-		//-------------------------------------------------------
-		// Controller type 1 inputs here
-		//-------------------------------------------------------
-		// TODO: Actual controller inputs
-	}
-
-	// TODO: Gather network inputs here
-
-
-	// Catch configuration issues before they go any further
-	for(InputEvent event : events){
-		assert(event.source_type != InputSourceType::DEVICE_INVALID);
-		assert(event.source_type != InputSourceType::DEVICE_UNRECOGNIZED);
-	}
-
-	return events;
+	return input_events;
 }
 
 Settings VG::Engine::defaultSettings(){

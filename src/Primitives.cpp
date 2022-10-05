@@ -97,6 +97,10 @@ bool IVec2::operator==(const IVec2& other) const{
 	return (x == other.x) && (y == other.y);
 }
 
+bool IVec2::operator!=(const IVec2& other) const{
+	return !(*this == other);
+}
+
 int& IVec2::operator[](const int index){
 	int* content_arr = &this->x;
 	return content_arr[index];

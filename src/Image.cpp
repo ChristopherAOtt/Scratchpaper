@@ -1,6 +1,19 @@
 #include "Image.hpp"
 
+Image::Image(){
+	Image::Settings default_settings = {
+		Image::PIXELTYPE_RGB,
+		{64, 64},
+		.initial_clear=false
+	};
+	init(default_settings);
+}
+
 Image::Image(Image::Settings settings){
+	init(settings);
+}
+
+void Image::init(Image::Settings settings){
 	assert(settings.type >= MIN_VALID_PIXELTYPE && settings.type <= MAX_VALID_PIXELTYPE);
 	Int64 num_pixels = settings.dimensions.x * settings.dimensions.y;
 	Int64 num_bytes = num_pixels * PIXEL_TYPE_SIZES[settings.type];
@@ -40,6 +53,20 @@ Int32 Image::maxSaturation() const{
 	return MAX_SATURATION_VALUES[m_type];
 }
 
+void Image::resize(IVec2 new_dims){
+	/*
+	Change the size and memory allocation of the image. 
+	*/
+
+	if(new_dims != m_dimensions){
+		Int64 num_pixels_new = new_dims.x * new_dims.y;
+		Int64 num_bytes_new = num_pixels_new * PIXEL_TYPE_SIZES[m_type];
+		m_dimensions = new_dims;
+		m_num_bytes = num_bytes_new;
+		m_data_ptr = realloc(m_data_ptr, num_bytes_new);
+	}
+}
+
 Image::PixelMonochrome& Image::pixelMonochrome(Int64 pixel_index){
 	assert(m_type == PIXELTYPE_MONOCHROME);
 	assertPixelIndexInBounds(pixel_index, PIXELTYPE_MONOCHROME);
@@ -59,6 +86,10 @@ Image::PixelRGBA& Image::pixelRGBA(Int64 pixel_index){
 	assertPixelIndexInBounds(pixel_index, PIXELTYPE_RGBA);
 	PixelRGBA* cast_ptr = (PixelRGBA*) m_data_ptr;
 	return cast_ptr[pixel_index];
+}
+
+void* Image::dataPtr(){
+	return m_data_ptr;
 }
 
 void Image::assertPixelIndexInBounds(Int64 pixel_index, PixelType type, 

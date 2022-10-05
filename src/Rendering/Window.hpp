@@ -29,6 +29,7 @@ class Window{
 
 		// Query for different input info
 		bool isKeyInState(KeyEventType type, int keycode);
+		std::vector<InputEvent> getInputEvents();
 		//FVec2 currentMousePosition();
 		//bool isJoystickInState(InputEventType state);
 
