@@ -311,6 +311,10 @@ int IVec3::operator[](const int index) const{
 	return content_arr[index];
 }
 
+IVec3 toIntVector(FVec3 vec){
+	return {(Int32) floor(vec.x), (Int32) floor(vec.y), (Int32) floor(vec.z)};
+}
+
 void printPODStruct(const IVec3& vec){
 	printf("{%i,%i,%i}", vec.x, vec.y, vec.z);
 }

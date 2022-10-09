@@ -2,28 +2,10 @@
 
 #include "Primitives.hpp"
 #include "Chunks.hpp"
+#include "MathUtils.hpp"
 
 #include <memory>
 
-
-//-------------------------------------------------------------------------------------------------
-// Hashing
-//-------------------------------------------------------------------------------------------------
-typedef Bytes4 CoordHash;
-namespace Hash{
-	/*
-	constexpr int LARGE_PRIME_1 = 198491317;
-	constexpr int LARGE_PRIME_2 = 6542989;
-
-	constexpr Bytes4 BIT_NOISE_1 = 0xB5297A4D;
-	constexpr Bytes4 BIT_NOISE_2 = 0x68E31DA4;
-	constexpr Bytes4 BIT_NOISE_3 = 0x1B56C4E9;
-
-	Bytes4 toLinearValue(IVec3 coord);
-	CoordHash squirrelNoise(IVec3 coord, Bytes4 seed);
-	*/
-
-};
 
 //-------------------------------------------------------------------------------------------------
 // Chunk Generator
@@ -69,8 +51,40 @@ struct GenerationAlgorithm{
 //-----------------------------------------------
 class NoiseLayers: public GenerationAlgorithm{
 	public:
+		struct Layer{
+			FVec3 scale;  // Meters per sample
+			IVec2 value_range;
+		};
+
+	public:
 		RawVoxelChunk generate(const ChunkTable* table, IVec3 coords);
+		void addNoiseLayer(Layer layer);
 		//RawVoxelChunk generateLodChunk(const ChunkTable* table, IVec3 coords, int lod_power);
+
+	private:
+		struct SampleCage{
+			ICuboid cage_local_volume;
+
+			FVec3 t_local_initial;
+			FVec3 t_increment;
+
+			float samples[NUM_CORNERS_PER_CUBE];
+		};
+
+		struct SampleCoords{
+			IVec3 coords[NUM_CORNERS_PER_CUBE];
+		};
+
+	private:
+		SampleCoords sampleCoordsFromPosition(IVec3 coord);
+		void iterateCageValues(SampleCage cage);
+		float trilinearInterpolation(const float* samples, FVec3 t_values) const;
+
+		void setNoiseScratchBufferValue(float value);
+
+	private:
+		std::vector<Layer> m_layers;
+		float m_noise_scratch_buffer[CHUNK_VOLUME];
 };
 
 class Fractal: public GenerationAlgorithm{

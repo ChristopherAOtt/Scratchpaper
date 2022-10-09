@@ -44,6 +44,9 @@ class ChunkManager{
 		void saveChunksToFile(std::vector<IVec3>& coords);
 		void eraseChunksFromFile(std::vector<IVec3>& coords);
 		
+		// Init functions
+		void initNoiseLayers(NoiseLayers* layers_algorithm);
+
 	private:
 		std::weak_ptr<Settings> m_settings_ptr;
 		ChunkGenerator m_generator;

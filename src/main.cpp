@@ -534,12 +534,41 @@ void framebufferScratch(){
 	}
 }
 
+IVec3 randomCoord(){
+	constexpr Int32 MAX_VALUE = 10000000;
+	constexpr Int32 HALF_VALUE = 10000000;
+	
+	IVec3 output;
+	for(Int32 i = 0; i < 3; ++i){
+		output[i] = rand() % MAX_VALUE - HALF_VALUE;
+	}
+	
+	return output;
+}
+
+Int32 signedCeil2(float value){
+	Int32 result = (Int32) ceil(value);
+
+	return result;
+}
+
+void scratchFloatTesting(){
+	for(float a = 10.857; a > -27.64; a -= 0.73){
+		printf("(%f vs %i) <-- %f --> (%f vs %i)\n", 
+			floor(a), (Int32) floor(a), 
+			a, 
+			ceil(a), signedCeil2(a));
+	}
+}
+
 int main(int argc, char** argv){
 	//scratchDeclarationLoading();
 	//testMeshLoad(argc, argv);
 	//scratchFloatMatcher();
-	
 	//framebufferScratch();
+	//scratchNoiseLayers();
+
+	//scratchFloatTesting();
 	runEngineMainLoop(argc, argv);
 
 	return 0;

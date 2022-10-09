@@ -155,8 +155,8 @@ ChunkVoxelMesh generateChunkMesh(const MesherAdjacencyGrid& adjacency, CellAddre
 						VoxelMeshVertex new_vertex = {
 							.position=face.vertex_positions[i],
 							.uv=DUMMY_UV,
-							.type_index=curr_node.voxel_type,
-							.normal_index=(Uint32)f
+							.type_index=static_cast<Uint32>(curr_node.voxel_type),
+							.normal_index=static_cast<Uint32>(f)
 						};
 						mesh.vertices.push_back(new_vertex);
 					}

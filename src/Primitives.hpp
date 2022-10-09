@@ -192,6 +192,7 @@ struct IVec3{
 	int& operator[](const int index);
 	int operator[](const int index) const;
 };
+IVec3 toIntVector(FVec3 vec);
 void printPODStruct(const IVec3& vec);
 
 //--------------------------------------------------------------------------------------------------

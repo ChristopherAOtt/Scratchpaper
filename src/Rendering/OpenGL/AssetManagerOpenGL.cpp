@@ -340,13 +340,13 @@ RenderableBufferMetadata AssetManagerOpenGL::initChunkVoxelMesh(
 		
 		// Type Index
 		glEnableVertexAttribArray(2);	
-		glVertexAttribPointer(2, 1, GL_UNSIGNED_INT, GL_FALSE,
-			sizeof(VoxelMeshVertex), (void*) (sizeof(Bytes4) * 5));
+		glVertexAttribIPointer(2, 1, GL_UNSIGNED_INT,
+			sizeof(VoxelMeshVertex), (void*) (sizeof(float) * 5));
 
 		// Normal Index
 		glEnableVertexAttribArray(3);	
-		glVertexAttribPointer(3, 1, GL_UNSIGNED_INT, GL_FALSE,
-			sizeof(VoxelMeshVertex), (void*) (sizeof(Bytes4) * 6));
+		glVertexAttribIPointer(3, 1, GL_UNSIGNED_INT,
+			sizeof(VoxelMeshVertex), (void*) (sizeof(float) * 9));
 		//--------------------------------------------------------------
 	}
 	glBindVertexArray(0);

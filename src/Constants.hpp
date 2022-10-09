@@ -11,7 +11,10 @@ constexpr float ARBITRARY_EPSILON = 0.0000001;
 constexpr float LARGE_FLOAT = 99999999999;
 constexpr Uint64 MAX_INT32_VALUE = INT_MAX;
 constexpr Uint64 MAX_INT64_VALUE = LLONG_MAX;
+constexpr Uint64 MAX_UINT64_VALUE = ULLONG_MAX;
 constexpr Int32 NUM_VERTICES_PER_TRIANGLE = 3;
+constexpr Int32 NUM_VOXELS_PER_METER = 4;  // Must be power of 2
+constexpr Int32 NUM_CORNERS_PER_CUBE = 8;
 
 // Used when indexing into min/max arrays to make the ordering clearer
 constexpr int INDEX_VALUE_MIN = 0;

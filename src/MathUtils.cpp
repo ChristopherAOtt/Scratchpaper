@@ -15,6 +15,10 @@ float max(float a, float b){
 	return b;	
 }
 
+float lerp(float a, float b, float t){
+	return ((1 - t) * a) + (t * b);
+}
+
 float lerp(int a, int b, float t){
 	return ((1 - t) * a) + (t * b);
 }
@@ -66,9 +70,75 @@ IVec3 clamp(IVec3 vec, int min, int max){
 	return vec;
 }
 
+FVec3 min(FVec3 a, FVec3 b){
+	FVec3 output;
+	for(Int32 i = 0; i < 3; ++i){
+		output[i] = min(a[i], b[i]);
+	}
+
+	return output;
+}
+
+FVec3 max(FVec3 a, FVec3 b){
+	FVec3 output;
+	for(Int32 i = 0; i < 3; ++i){
+		output[i] = max(a[i], b[i]);
+	}
+
+	return output;
+}
+
 FVec3 lerp(FVec3 a, FVec3 b, float t){
 	return ((1 - t) * a) + (t * b);
 }
+
+Int32 directionalMod(int value, int mod){
+	/*
+	Modulo that doesn't flip when negative
+	*/
+
+	return (value % mod + mod) % mod;
+}
+
+float floatMod(float value, Int32 mod){
+	/*
+	Acts like modulo for floats. Supposed to generate continuous output
+	when sliding over the range of positive and negative floats.
+	
+	TODO: Optimize without introducing branches
+	*/
+
+	// Create a float wrapped into (-mod, mod)
+	int   i_part = (int) value;
+	float f_part = value - i_part;
+	i_part = i_part % mod;
+	f_part = i_part + f_part + mod;
+	
+	// Wrap the resulting float into the positive range
+	int new_i_part   = (int) f_part;
+	float new_f_part = f_part - new_i_part;
+	new_i_part = new_i_part % mod;
+
+	// Reassemble and return
+	return new_i_part + new_f_part;
+}
+
+float signedFract(float input){
+	/*
+	Returns the fractional component for floats while preserving the sign.
+	*/
+
+	return input - (int) input;
+}
+
+float fract(float input){
+	double d_input = input;
+	double component_integer;
+
+	double component_fraction = modf(d_input, &component_integer);
+	return component_fraction;
+}
+
 
 //------------------------------------------------------------------------------
 glm::vec3 toGlm(const FVec3& vec){

@@ -103,7 +103,9 @@ void ChunkManager::updateWithSettings(std::weak_ptr<Settings> settings_ptr){
 	if(name == "Default"){
 		generator_ptr = new NoiseLayers;
 	}else if(name == "NoiseLayers"){
-		generator_ptr = new NoiseLayers;
+		NoiseLayers* noise_layers = new NoiseLayers;
+		initNoiseLayers(noise_layers);
+		generator_ptr = noise_layers;
 	}else if(name == "Fractal"){
 		generator_ptr = new Fractal;
 	}else if(name == "CenteredSphere"){
@@ -197,4 +199,46 @@ void ChunkManager::eraseChunksFromFile(std::vector<IVec3>& coords){
 	}
 }
 
+void ChunkManager::initNoiseLayers(NoiseLayers* layers_algorithm){
+	/*
+	TODO: Take inputs from a settings object instead of having them
+		hardcoded in here.
 
+		In the SETTINGS file, put something like:
+		LayerList = [
+			{
+				Scale = {bla1, bla1, bla1};
+				ValueRange = {this1, that1};
+			},
+			{
+				Scale = {bla2, bla2, bla2};
+				ValueRange = {this2, that2};
+			},
+			etc
+		]
+	*/
+
+	constexpr Int32 NUM_LAYERS = 4;
+	constexpr float SCALES[] = {
+		5, 17, 65, 271, 751
+	};
+
+	constexpr IVec2 VALUE_RANGES[] = {
+		{-5, 10},
+		{-10, 20},
+		{0, 20},
+		{-60, 120},
+		{0, 590},
+	};
+
+	for(Int32 i = 0; i < NUM_LAYERS; ++i){
+		FVec3 scale_vec = {SCALES[i], SCALES[i], SCALES[i]};
+
+		NoiseLayers::Layer new_layer = {
+			.scale=scale_vec,
+			.value_range=VALUE_RANGES[i]
+		};
+
+		layers_algorithm->addNoiseLayer(new_layer);
+	}
+}

@@ -4,10 +4,12 @@
 #include "Camera.hpp"
 #include "GLIncludes.hpp"
 
+/*
+NOTE: This file has become a dumping ground for random helper functions, and
+has become increasingly disorganized over time. Cleanup is needed.
+*/
+
 namespace MathUtils{
-	// GLM outputs
-	//glm::vec3 toGlm(const FVec3& vec);
-	
 	namespace Matrix{
 		FMat4 makePerspectiveProjectionMatrix(const Camera& camera);
 		FMat4 makeViewMatrix(const Camera& camera);
@@ -74,12 +76,20 @@ namespace MathUtils{
 			Uint64 next();
 			void jump();
 		};
+
+		static inline float randInRange(Uint64 seed, Range32 range){
+			double ratio = ((double) seed) / (double) MAX_UINT64_VALUE;
+			float result = (ratio * range.extent) + range.origin;
+
+			return result;
+		}
 	};
 };
 
 // TODO: Templates
 float min(float a, float b);
 float max(float a, float b);
+float lerp(float a, float b, float t);
 float lerp(int a, int b, float t);
 float clamp(float value, float min, float max);
 
@@ -92,6 +102,11 @@ IVec2 max(IVec2 vec, IVec2 max_vec);
 
 IVec3 clamp(IVec3 vec, int min, int max);
 
+FVec3 min(FVec3 a, FVec3 b);
+FVec3 max(FVec3 a, FVec3 b);
 FVec3 lerp(FVec3 a, FVec3 b, float t);
 
+Int32 directionalMod(Int32 value, Int32 mod);
+float floatMod(float value, Int32 mod);
+float signedFract(float input);
 

@@ -28,17 +28,18 @@ namespace ENGINE{
 		SkyColor: {0.1, 0.1, 0.1};
 
 		namespace CHUNK_GEN{
-			Seed: 56
-			//GenerationAlgorithm: NoiseLayers
+			Seed: 56;
+			//Seed: 2017;
+			GenerationAlgorithm: NoiseLayers
 			//GenerationAlgorithm: Fractal
 			//GenerationAlgorithm: CenteredSphere;
 			//GenerationAlgorithm: Scratch;
 			//GenerationAlgorithm: MeshTesting
-			GenerationAlgorithm: PillarsAndCaves
-			//MinBounds: {-2, -2, -4};
-			//MaxBounds: {3, 3, 0};
-			MinBounds: {0, 0, 0};
-			MaxBounds: {0, 0, 0};
+			//GenerationAlgorithm: PillarsAndCaves
+			//MinBounds: {0, 0, 0};
+			//MaxBounds: {0, 0, 0};
+			MinBounds: {-4, -4, -4};
+			MaxBounds: {4, 4, 4};
 		};
 	};
 
@@ -46,8 +47,8 @@ namespace ENGINE{
 		ImageDimensions: {800, 800};
 		TileDimensions: {32, 32};
 		NumRenderThreads: 3;
-		RaysPerPixel: 1;
-		MaxPathLen: 1;
+		RaysPerPixel: 5;
+		MaxPathLen: 10;
 		ShouldCompressFailedPaths: True;
 
 		SkyColor: {0.5294, 0.8078, 0.9216};

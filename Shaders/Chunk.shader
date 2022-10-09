@@ -48,13 +48,14 @@ uniform vec3 ambient_color;
 
 const float PI = 3.141592;
 const float TAU = PI * 2;
-const int NUM_BLOCK_TYPES = 5;
-vec3 block_colors[NUM_BLOCK_TYPES] = vec3[](
-	vec3(1, 0, 0), //Air
+const int NUM_BLOCK_TYPES = 6;
+vec3 block_colors[] = vec3[](
+	vec3(1.0, 0.0, 0.0), // Empty
+	vec3(1.0, 0.0, 0.0), // Lookup
+	vec3(1.0, 0.0, 0.0), // Air
 	vec3(0.10, 0.95, 0.00), //Grass
 	vec3(0.50, 0.25, 0.05), //Dirt
-	vec3(0.30, 0.30, 0.30), //Stone
-	vec3(0.10, 0.10, 0.13)  //Metal
+	vec3(0.30, 0.30, 0.30) //Stone
 );
 
 float far_plane = 250;
@@ -65,13 +66,11 @@ void main(){
 	/*
 	For normal block rendering
 	*/
-	/*
 	vec3 block_color = block_colors[blocktype % NUM_BLOCK_TYPES];
 	float distance = pow(length(world_coord - camera_pos) / far_plane, 3.5);
 	float fog_blend = max(min(distance, 1), 0);
 	output_color = mix(block_color, fog_color, fog_blend);
-	*/
-	
+
 	/*
 	For scaled voxel blocks
 	*/
@@ -109,7 +108,7 @@ void main(){
 	line_intensity += 0.90;
 	line_intensity = 1 - pow(line_intensity, 50);
 	//output_color = vec3(line_intensity);
-	output_color = vec3((1 - line_intensity) + 0.15);
+	output_color += vec3((1 - line_intensity) + 0.15);
 
 
 	/*

@@ -47,41 +47,213 @@ void GenerationAlgorithm::setSeed(Bytes8 seed){
 //-----------------------------------------------
 // NoiseLayers
 //-----------------------------------------------
+
 RawVoxelChunk NoiseLayers::generate(const ChunkTable* table, IVec3 coords){
 	/*
-	WARNING: Incomplete function
+	WARNING: The conversion from voxel_space->sample_space->voxel_space introduces
+		unacceptable rounding error that causes the "cage" to go out of bounds. This
+		is currently being dealt with by artificially clamping the t_values into range.
+
+	TODO: Rewrite to keep voxel-space cage positions available at all times to avoid
+		the round-trip through floating point math.
 	*/
 
 	RawVoxelChunk chunk;
-	
-	float density;
 
-	IVec3 offset = coords * CHUNK_LEN;
-	for(int z = 0; z < CHUNK_LEN; ++z)
-	for(int y = 0; y < CHUNK_LEN; ++y)
-	for(int x = 0; x < CHUNK_LEN; ++x){
-		IVec3 local_coord = {x, y, z};
-		IVec3 world_coord = offset + local_coord;
-		density = toFloatVector(world_coord).length() / 5;
+	// TODO: Remove after testing
+	for(const Layer& layer : m_layers){
+		for(Int32 i = 0; i < 3; ++i){
+			assert(layer.scale[i] > 0);
+		}
 
-		chunk.data[linearChunkIndex(x, y, z)] = clampDensityToPalette(
-			DEFAULT_VOXEL_PALETTE, 
-			NUM_DEFAULT_PALETTE_OPTIONS, 
-			density);
+		Int32 layer_range_extent = layer.value_range.y - layer.value_range.x;
+		assert(layer_range_extent >= 0);
+	}
+
+	// Noise layers add/subtract "density" from each cell, so the buffer needs
+	// to be cleared before each run.
+	setNoiseScratchBufferValue(0);
+	IVec3 gdb_chunk_coord = coords;
+	IVec3 vox_offset_chunk_base = coords * CHUNK_LEN;
+	FVec3 vox_start = toFloatVector(vox_offset_chunk_base);
+	FVec3 vox_stop = vox_start + FVec3{CHUNK_LEN, CHUNK_LEN, CHUNK_LEN};
+	for(Layer layer : m_layers){
+		Int32 layer_range_extent = layer.value_range.y - layer.value_range.x;
+		FVec3 voxels_per_sample = layer.scale * NUM_VOXELS_PER_METER;
+		FVec3 sample_t_per_voxel;
+		for(Int32 i = 0; i < 3; ++i){
+			sample_t_per_voxel[i] = (1.0f / voxels_per_sample[i]);
+		}
+		FVec3 sample_chunk_start = hadamard(vox_start, sample_t_per_voxel);
+		FVec3 sample_chunk_stop = hadamard(vox_stop, sample_t_per_voxel);
+
+		IVec2 ssr[3];  // Sample Space Ranges
+		for(Int32 i = 0; i < 3; ++i){
+			// Range of sample space cell coordinates
+			IVec2 sample_range = {
+				(Int32) floor(sample_chunk_start[i]),
+				(Int32) ceil(sample_chunk_stop[i]),
+			};
+			ssr[i] = sample_range;
+		}
+
+		// For larger sample spaces this should degenerate to the chunk's bounding
+		// coordinates measured in sample space.
+		for(Int32 z = ssr[INDEX_Z][INDEX_VALUE_MIN]; z < ssr[INDEX_Z][INDEX_VALUE_MAX]; ++z)
+		for(Int32 y = ssr[INDEX_Y][INDEX_VALUE_MIN]; y < ssr[INDEX_Y][INDEX_VALUE_MAX]; ++y)
+		for(Int32 x = ssr[INDEX_X][INDEX_VALUE_MIN]; x < ssr[INDEX_X][INDEX_VALUE_MAX]; ++x){
+			IVec3 sample_coord_low =  {x + 0, y + 0, z + 0};
+			IVec3 sample_coord_high = {x + 1, y + 1, z + 1};
+			
+			FVec3 t_sample_low =  max(toFloatVector(sample_coord_low), sample_chunk_start);
+			FVec3 t_sample_high = min(toFloatVector(sample_coord_high), sample_chunk_stop);
+			
+			IVec3 vox_cage_origin = toIntVector(hadamard(t_sample_low, voxels_per_sample));
+			IVec3 vox_cage_end =    toIntVector(hadamard(t_sample_high, voxels_per_sample));
+			IVec3 vox_cage_extent = vox_cage_end - vox_cage_origin;
+			FVec3 local_t_sample = {
+				clamp(floatMod(t_sample_low.x, 1), 0.0, 1.0), 
+				clamp(floatMod(t_sample_low.y, 1), 0.0, 1.0), 
+				clamp(floatMod(t_sample_low.z, 1), 0.0, 1.0)
+			};
+
+			SampleCage cage = {
+				.cage_local_volume={
+					.origin=vox_cage_origin - vox_offset_chunk_base,
+					.extent=vox_cage_extent
+				},
+				.t_local_initial=local_t_sample,
+				.t_increment=sample_t_per_voxel,
+			};
+
+			SampleCoords sample_coords = sampleCoordsFromPosition(sample_coord_low);
+			for(Int32 i = 0; i < NUM_CORNERS_PER_CUBE; ++i){
+				IVec3 sample_coord = sample_coords.coords[i];
+				Hash::CoordHash hash = Hash::modifiedSquirrelNoise(sample_coord, m_seed);
+				Range32 rand_range = {layer.value_range.x, layer_range_extent};
+				cage.samples[i] = MathUtils::Random::randInRange(hash, rand_range);
+			}
+
+			iterateCageValues(cage);
+		}
+	}
+
+	constexpr Int32 NUM_PALETTE_OPTIONS = 4;
+	constexpr Voxel PALETTE[] = {
+		{VoxelType::Air}, 
+		{VoxelType::Dirt},
+		{VoxelType::Dirt},
+		{VoxelType::Stone},
+	};
+
+	// Now iterate through the results and clamp to the palette
+	Int32 index = 0;
+	for(Int32 z = 0; z < CHUNK_LEN; ++z)
+	for(Int32 y = 0; y < CHUNK_LEN; ++y)
+	for(Int32 x = 0; x < CHUNK_LEN; ++x){
+		float height_adjustment = -(z + vox_offset_chunk_base.z) * 0.17;
+		float final_density = m_noise_scratch_buffer[index] + height_adjustment;
+
+		chunk.data[index] = clampDensityToPalette(PALETTE, NUM_PALETTE_OPTIONS, final_density);
+		++index;
+	}
+
+	// Final type-dependent touch-ups
+	// TODO: Reference other chunks for border voxels
+	index = 0;
+	for(Int32 z = 0; z < CHUNK_LEN; ++z)
+	for(Int32 y = 0; y < CHUNK_LEN; ++y)
+	for(Int32 x = 0; x < CHUNK_LEN; ++x){
+		VoxelType& curr_type = chunk.data[index].type;
+		if(curr_type == VoxelType::Dirt){
+			VoxelType above_type = chunk.data[linearChunkIndex(x, y, z + 1)].type;
+			bool is_above_air = (z == CHUNK_LEN - 1) || above_type == VoxelType::Air;
+
+			if(is_above_air){
+				curr_type = VoxelType::Grass;
+			}
+		}
+
+		++index;
 	}
 
 	return chunk;
 }
 
-/*
-RawVoxelChunk NoiseLayers::generateLodChunk(const ChunkTable* table, IVec3 coords, 
-	int lod_power){
-	//WARNING: Incomplete function
-	assert(false);
-	RawVoxelChunk chunk;
-	return chunk;
+void NoiseLayers::addNoiseLayer(Layer layer){
+	m_layers.push_back(layer);
 }
-*/
+
+NoiseLayers::SampleCoords NoiseLayers::sampleCoordsFromPosition(IVec3 coord){
+	NoiseLayers::SampleCoords coords;
+
+	Int32 write_index = 0;
+	for(Int32 z = 0; z < 2; ++z)
+	for(Int32 y = 0; y < 2; ++y)
+	for(Int32 x = 0; x < 2; ++x){
+		coords.coords[write_index++] = coord + IVec3{x, y, z};
+	}
+
+	return coords;
+}
+
+void NoiseLayers::iterateCageValues(SampleCage cage){
+	/*
+	All samples will fall within the sample cage. Helps avoid unnecessary
+	re-sampling for noise layers with very large distances between samples.
+	*/
+	
+	ICuboid vol = cage.cage_local_volume;
+	IVec3 end = vol.origin + vol.extent;
+	for(Int32 i = 0; i < 3; ++i){
+		assert(vol.origin[i] >= 0);
+		assert(end[i] <= CHUNK_LEN);
+	}
+
+	FVec3 curr_t = cage.t_local_initial;
+	for(int z = vol.origin.z; z < end.z; ++z){
+		for(int y = vol.origin.y; y < end.y; ++y){
+			for(int x = vol.origin.x; x < end.x; ++x){
+				float value = trilinearInterpolation(cage.samples, curr_t);
+				m_noise_scratch_buffer[linearChunkIndex(x, y, z)] += value;
+				
+				curr_t.x += cage.t_increment.x;
+			}
+			curr_t.x = cage.t_local_initial.x;
+			curr_t.y += cage.t_increment.y;
+		}
+		curr_t.y = cage.t_local_initial.y;
+		curr_t.z += cage.t_increment.z;
+	}
+}
+
+float NoiseLayers::trilinearInterpolation(const float* samples, FVec3 t_values) const{
+	/*
+	Given a cube of samples and the t_values between them, perform a 
+	trilinear interpolation and return the value.
+	*/
+
+	// Lerp coords along x
+	float lerp_x1 = lerp(samples[0], samples[1], t_values.x);
+	float lerp_x2 = lerp(samples[2], samples[3], t_values.x);
+	float lerp_x3 = lerp(samples[4], samples[5], t_values.x);
+	float lerp_x4 = lerp(samples[6], samples[7], t_values.x);
+
+	// Lerp prior results along y
+	float lerp_y1 = lerp(lerp_x1, lerp_x2, t_values.y);
+	float lerp_y2 = lerp(lerp_x3, lerp_x4, t_values.y);
+
+	// Lerp prior results along z.
+	float lerp_z1 = lerp(lerp_y1, lerp_y2, t_values.z);
+
+	return lerp_z1;
+}
+
+void NoiseLayers::setNoiseScratchBufferValue(float value){
+	for(Int32 i = 0; i < CHUNK_VOLUME; ++i){
+		m_noise_scratch_buffer[i] = value;
+	}
+}
 
 
 //-----------------------------------------------
@@ -290,7 +462,7 @@ RawVoxelChunk PillarsAndCaves::generate(const ChunkTable* table, IVec3 coords){
 			
 			if(!is_pillar && global_pos.z < -20){
 				// Large blocky rooms
-				CoordHash hash = Hash::modifiedSquirrelNoise(hash_pos, seed);
+				Hash::CoordHash hash = Hash::modifiedSquirrelNoise(hash_pos, seed);
 				density += hash;
 			}
 		}
