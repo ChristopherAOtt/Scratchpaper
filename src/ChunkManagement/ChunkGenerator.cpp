@@ -47,12 +47,26 @@ void GenerationAlgorithm::setSeed(Bytes8 seed){
 //-----------------------------------------------
 // NoiseLayers
 //-----------------------------------------------
+IVec3 biasedIntVector(FVec3 float_vec){
+	/*
+	Instead of just flooring the float values and getting rounding errors in the
+	negative range, this adds a bias beforehand. 
+	*/
+
+	IVec3 output;
+	for(Int32 i = 0; i < 3; ++i){
+		output[i] = (Int32) floor(float_vec[i] + 0.5);
+	}
+	return output;
+}
+
 
 RawVoxelChunk NoiseLayers::generate(const ChunkTable* table, IVec3 coords){
 	/*
 	WARNING: The conversion from voxel_space->sample_space->voxel_space introduces
 		unacceptable rounding error that causes the "cage" to go out of bounds. This
-		is currently being dealt with by artificially clamping the t_values into range.
+		is currently being dealt with by biasing the values during the float->int conversion
+		step via biasedIntVector().
 
 	TODO: Rewrite to keep voxel-space cage positions available at all times to avoid
 		the round-trip through floating point math.
@@ -73,10 +87,10 @@ RawVoxelChunk NoiseLayers::generate(const ChunkTable* table, IVec3 coords){
 	// Noise layers add/subtract "density" from each cell, so the buffer needs
 	// to be cleared before each run.
 	setNoiseScratchBufferValue(0);
-	IVec3 gdb_chunk_coord = coords;
 	IVec3 vox_offset_chunk_base = coords * CHUNK_LEN;
+	IVec3 vox_offset_chunk_end = vox_offset_chunk_base + IVec3{CHUNK_LEN, CHUNK_LEN, CHUNK_LEN};
 	FVec3 vox_start = toFloatVector(vox_offset_chunk_base);
-	FVec3 vox_stop = vox_start + FVec3{CHUNK_LEN, CHUNK_LEN, CHUNK_LEN};
+	FVec3 vox_stop = toFloatVector(vox_offset_chunk_end);
 	for(Layer layer : m_layers){
 		Int32 layer_range_extent = layer.value_range.y - layer.value_range.x;
 		FVec3 voxels_per_sample = layer.scale * NUM_VOXELS_PER_METER;
@@ -108,19 +122,17 @@ RawVoxelChunk NoiseLayers::generate(const ChunkTable* table, IVec3 coords){
 			FVec3 t_sample_low =  max(toFloatVector(sample_coord_low), sample_chunk_start);
 			FVec3 t_sample_high = min(toFloatVector(sample_coord_high), sample_chunk_stop);
 			
-			IVec3 vox_cage_origin = toIntVector(hadamard(t_sample_low, voxels_per_sample));
-			IVec3 vox_cage_end =    toIntVector(hadamard(t_sample_high, voxels_per_sample));
-			IVec3 vox_cage_extent = vox_cage_end - vox_cage_origin;
-			FVec3 local_t_sample = {
-				clamp(floatMod(t_sample_low.x, 1), 0.0, 1.0), 
-				clamp(floatMod(t_sample_low.y, 1), 0.0, 1.0), 
-				clamp(floatMod(t_sample_low.z, 1), 0.0, 1.0)
-			};
+			IVec3 vox_cage_origin = biasedIntVector(hadamard(t_sample_low, voxels_per_sample));
+			IVec3 vox_cage_end =    biasedIntVector(hadamard(t_sample_high, voxels_per_sample));
+			FVec3 local_t_sample;
+			for(Int32 i = 0; i < 3; ++i){
+				local_t_sample[i] = clamp(floatMod(t_sample_low[i], 1), 0.0, 1.0);
+			}
 
 			SampleCage cage = {
 				.cage_local_volume={
 					.origin=vox_cage_origin - vox_offset_chunk_base,
-					.extent=vox_cage_extent
+					.extent=vox_cage_end - vox_cage_origin
 				},
 				.t_local_initial=local_t_sample,
 				.t_increment=sample_t_per_voxel,
@@ -138,43 +150,71 @@ RawVoxelChunk NoiseLayers::generate(const ChunkTable* table, IVec3 coords){
 		}
 	}
 
-	constexpr Int32 NUM_PALETTE_OPTIONS = 4;
-	constexpr Voxel PALETTE[] = {
-		{VoxelType::Air}, 
-		{VoxelType::Dirt},
-		{VoxelType::Dirt},
-		{VoxelType::Stone},
-	};
-
-	// Now iterate through the results and clamp to the palette
-	Int32 index = 0;
+	// Now iterate through the results and adjust their densities based on 
+	// global properties. For now that's just their height.
+	Int32 linear_index = 0;
 	for(Int32 z = 0; z < CHUNK_LEN; ++z)
 	for(Int32 y = 0; y < CHUNK_LEN; ++y)
 	for(Int32 x = 0; x < CHUNK_LEN; ++x){
 		float height_adjustment = -(z + vox_offset_chunk_base.z) * 0.17;
-		float final_density = m_noise_scratch_buffer[index] + height_adjustment;
+		float final_density = m_noise_scratch_buffer[linear_index] + height_adjustment;
+		m_noise_scratch_buffer[linear_index] = final_density;
 
-		chunk.data[index] = clampDensityToPalette(PALETTE, NUM_PALETTE_OPTIONS, final_density);
-		++index;
+		++linear_index;
 	}
 
-	// Final type-dependent touch-ups
-	// TODO: Reference other chunks for border voxels
-	index = 0;
+	constexpr Int32 NUM_PALETTE_OPTIONS = 8;
+	constexpr Voxel PALETTE[] = {
+		{VoxelType::Air}, 
+		{VoxelType::Dirt},
+		{VoxelType::Dirt},
+		{VoxelType::Dirt},
+		{VoxelType::Dirt},
+		{VoxelType::Stone},
+		{VoxelType::Dirt},
+		{VoxelType::Stone},
+	};
+
+	// Determine what block types to emit based on density
+	linear_index = 0;
 	for(Int32 z = 0; z < CHUNK_LEN; ++z)
 	for(Int32 y = 0; y < CHUNK_LEN; ++y)
 	for(Int32 x = 0; x < CHUNK_LEN; ++x){
-		VoxelType& curr_type = chunk.data[index].type;
-		if(curr_type == VoxelType::Dirt){
-			VoxelType above_type = chunk.data[linearChunkIndex(x, y, z + 1)].type;
-			bool is_above_air = (z == CHUNK_LEN - 1) || above_type == VoxelType::Air;
+		float density = m_noise_scratch_buffer[linear_index];
+		Voxel voxel = clampDensityToPalette(PALETTE, NUM_PALETTE_OPTIONS, density);
+		
+		// Dirt blocks exposed to air on top should be grass.
+		if(voxel.type == VoxelType::Dirt){
+			bool is_above_air;
+			if(z == CHUNK_LEN - 1){
+				/*
+				We're at the top of a chunk. Extrapolate if the block should be
+				grass based on how fast the density drops vertically.
+				*/
+
+				float below_density = m_noise_scratch_buffer[linearChunkIndex(x, y, z - 1)];
+				float density_delta = density - below_density;
+				Int32 extrapolation = (Int32) floor(density + density_delta);
+				bool is_above_predicted_to_be_air = extrapolation <= 0;
+				is_above_air = is_above_predicted_to_be_air;
+			}else{
+				/*
+				We're inside the chunk, with layers above us. Just peek up by one and 
+				see if the density will be 0.
+				*/
+
+				float above_density = m_noise_scratch_buffer[linearChunkIndex(x, y, z + 1)];
+				Int32 above_palette_index = (Int32) floor(above_density);
+				is_above_air = above_palette_index <= 0;
+			}
 
 			if(is_above_air){
-				curr_type = VoxelType::Grass;
+				voxel.type = VoxelType::Grass;
 			}
 		}
 
-		++index;
+		chunk.data[linear_index] = voxel;
+		++linear_index;
 	}
 
 	return chunk;
@@ -423,10 +463,9 @@ RawVoxelChunk PillarsAndCaves::generate(const ChunkTable* table, IVec3 coords){
 	float density;
 
 	constexpr int PILLAR_WIDTH = 20;
+	constexpr int HALF_WIDTH = PILLAR_WIDTH / 2;
 	constexpr int PILLAR_MARGIN = 5;
 	constexpr int CELL_SHIFT_AMOUNT = 17;
-	int seed = 6789;
-	seed = m_seed;
 
 	IVec3 chunk_corner_pos = coords * CHUNK_LEN;
 
@@ -444,8 +483,8 @@ RawVoxelChunk PillarsAndCaves::generate(const ChunkTable* table, IVec3 coords){
 
 		// Space transforms
 		IVec3 pillar_space = {
-			((int)(abs(global_pos.x) + 0.5 * PILLAR_WIDTH) % PILLAR_WIDTH) - 0.5 * PILLAR_WIDTH, 
-			((int)(abs(global_pos.y) + 0.5 * PILLAR_WIDTH) % PILLAR_WIDTH) - 0.5 * PILLAR_WIDTH, 
+			((abs(global_pos.x) + HALF_WIDTH) % PILLAR_WIDTH) - HALF_WIDTH, 
+			((abs(global_pos.y) + HALF_WIDTH) % PILLAR_WIDTH) - HALF_WIDTH, 
 			global_pos.z
 		};
 
@@ -462,8 +501,8 @@ RawVoxelChunk PillarsAndCaves::generate(const ChunkTable* table, IVec3 coords){
 			
 			if(!is_pillar && global_pos.z < -20){
 				// Large blocky rooms
-				Hash::CoordHash hash = Hash::modifiedSquirrelNoise(hash_pos, seed);
-				density += hash;
+				Hash::CoordHash hash = Hash::modifiedSquirrelNoise(hash_pos, m_seed);
+				density += (Int32) hash;
 			}
 		}
 		

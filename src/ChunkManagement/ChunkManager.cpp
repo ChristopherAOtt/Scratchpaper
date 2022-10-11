@@ -218,9 +218,9 @@ void ChunkManager::initNoiseLayers(NoiseLayers* layers_algorithm){
 		]
 	*/
 
-	constexpr Int32 NUM_LAYERS = 4;
+	constexpr Int32 NUM_LAYERS = 5;
 	constexpr float SCALES[] = {
-		5, 17, 65, 271, 751
+		5, 17, 67, 271, 773  // Try to keep these prime
 	};
 
 	constexpr IVec2 VALUE_RANGES[] = {
@@ -228,7 +228,7 @@ void ChunkManager::initNoiseLayers(NoiseLayers* layers_algorithm){
 		{-10, 20},
 		{0, 20},
 		{-60, 120},
-		{0, 590},
+		{-100, 200},
 	};
 
 	for(Int32 i = 0; i < NUM_LAYERS; ++i){
