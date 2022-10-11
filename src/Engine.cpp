@@ -708,20 +708,12 @@ void VG::Engine::runMainLoop(){
 				printf("Adjusted resolution to (%iw x %ih pixels)\n", 
 					image_config.num_pixels.x, 
 					image_config.num_pixels.y);
-			}else if(pressed_keys.count(KEY_0)){
-				should_raytrace = !should_raytrace;
-				if(should_raytrace){
-					printf("Now in \"Raytrace Mode\" (expensive)\n");
-				}else{
-					printf("Now in \"Preview Mode\" (cheap)\n");
-				}
-				printf("\tReminder, press 'c' to capture an image\n");
 			}
 
 			// Only check for "heavy" functions at intervals to prevent rapid retriggering.
 			if(debounce_time > debounce_window){
 				debounce_time = 0;
-				if(pressed_keys.count(KEY_P)){
+				if(pressed_keys.count(KEY_TAB)){
 					// Reload all shaders and settings from their respective files
 					SystemInstruction render_instruction = {
 						.type=INSTRUCTION_GENERAL_TEXT,
@@ -735,6 +727,16 @@ void VG::Engine::runMainLoop(){
 					image_config = render_settings.image_config;
 					auto rns = m_settings_ptr->namespaceRef("RAYTRACING");
 					raytracer.m_should_compress_failed_paths = rns["ShouldCompressFailedPaths"].val_bool;
+				}
+
+				if(pressed_keys.count(KEY_T)){
+					should_raytrace = !should_raytrace;
+					if(should_raytrace){
+						printf("Now in \"Raytrace Mode\" (expensive)\n");
+					}else{
+						printf("Now in \"Preview Mode\" (cheap)\n");
+					}
+					printf("\tReminder, press 'C' to capture an image\n");
 				}
 
 				if(pressed_keys.count(KEY_L)){

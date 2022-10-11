@@ -155,12 +155,14 @@ class Raytracer{
 				const SimCache* simcache_ptr;
 				RenderSettings settings;
 				Image::PixelRGB* pixel_buffer;
-
+				Rendering::CameraRayGenerator ray_generator;
+				/*
 				// Position info used to orient rays
 				FVec3 plane_world_pos;
 				FVec3 camera_pos;
 				FVec3 image_x, image_y;
 				FVec2 half_dims;
+				*/
 			} image_info;
 
 			struct{

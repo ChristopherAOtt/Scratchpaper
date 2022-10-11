@@ -109,51 +109,65 @@ std::vector<Rendering::ImageTile> Rendering::tiles(
 	return tiles;
 }
 
+Rendering::CameraRayGenerator::CameraRayGenerator(){
+	
+}
+
+Rendering::CameraRayGenerator::CameraRayGenerator(Camera camera, IVec2 image_dims){
+	/*
+	Precalculate all terms that won't change for each ray
+	*/
+
+	// Convert to coordinate system where +X is right, +Y is down, and -Z is the view direction.
+	FVec3 image_plane_normal = camera.basis.v1.normal();
+	FVec3 image_x = image_plane_normal.cross(camera.basis.v2).normal();
+	FVec3 image_y = image_x.cross(image_plane_normal).normal();
+	FVec3 image_z = image_y.cross(image_x).normal();  // Intentionally NOT X.cross(Y)
+
+	// This term will stay the same for all generated rays, so it's worth 
+	// pre-computing
+	FVec2 image_half_dims = toFloatVector(image_dims) * 0.5;
+	FVec3 w_prime = 
+		image_x * -image_half_dims.x -
+		image_y * -image_half_dims.y +
+		image_z * (image_half_dims.y / tan(degreesToRadians(camera.fov) * 0.5));
+
+	// Save results
+	m_image_basis = {image_x, image_y, image_z};
+	m_image_dims = image_dims;
+	m_camera_pos = camera.pos;
+	m_w_prime = w_prime;
+}
+
+Ray Rendering::CameraRayGenerator::rayFromPixelCoord(IVec2 coord) const{
+	/*
+	Given pixel coordinates, return a ray for that pixel.
+	TODO: See if we can get away with not normalizing these.
+	*/
+
+	FVec3 ray_direction = {
+		(coord.x * m_image_basis.v0) - 
+		(coord.y * m_image_basis.v1) + 
+		m_w_prime
+	};
+
+	Ray new_ray = {m_camera_pos, ray_direction};
+	return new_ray.normal();
+}
+
 std::vector<Ray> Rendering::allRays(Camera camera, ImageConfig config){
 	/*
-	REFACTOR: This is code is very nearly duplicated in the raytracer. Consolidate.
+	Just fire rays across an image without any tiling
 	*/
 
 	std::vector<Ray> output_rays;
 	output_rays.reserve(config.num_pixels.x * config.num_pixels.y);
 
-	//std::vector<ImageTile> tile_vec = tiles(camera, config);
+	CameraRayGenerator generator(camera, config.num_pixels);
 
-	float film_distance = 1.5f;  // Arbitrary
-
-	// Convert coordinate system where +X is right, +Y is down, and -Z is the view direction.
-	FVec3 plane_world_pos = camera.pos + camera.basis.v1 * film_distance;
-	FVec3 image_plane_normal = camera.basis.v1.normal();
-	FVec3 image_x = image_plane_normal.cross(camera.basis.v2).normal();
-	FVec3 image_y = image_x.cross(image_plane_normal).normal();
-	//FVec3 image_z = image_x.cross(image_y).normal();
-
-	// Scaling factor
-	// Set the film ratio of the largest dimension relative to the smallest
-	FVec2 film_ratio = {1.0, 1.0};
-	FVec2 float_image_dims = toFloatVector(config.num_pixels);
-	if(float_image_dims.x > float_image_dims.y){
-		film_ratio.x = float_image_dims.x / float_image_dims.y;
-	}else{
-		film_ratio.y = float_image_dims.y / float_image_dims.x;
-	}
-	FVec2 half_dims = {film_ratio.x * 0.5f, film_ratio.y * 0.5f};
-
-	for(int y = config.num_pixels.y - 1; y >= 0; --y){
+	for(int y = 0; y < config.num_pixels.y; ++y){
 		for(int x = 0; x < config.num_pixels.x; ++x){
-			// 2.0f ~~~~~ - 1.0f
-			FVec2 distance_scale = {
-				8.0f * ((float)x / config.num_pixels.x) - 4.0f,
-				8.0f * ((float)y / config.num_pixels.y) - 4.0f
-			};
-
-			FVec3 film_target_pos = plane_world_pos;
-			film_target_pos += image_x * half_dims.x * distance_scale.x;
-			film_target_pos += image_y * half_dims.y * distance_scale.y;
-
-			FVec3 camera_to_film_dir = (film_target_pos - camera.pos).normal();
-			Ray new_ray = {camera.pos, camera_to_film_dir};
-			output_rays.push_back(new_ray);
+			output_rays.push_back(generator.rayFromPixelCoord({x, y}));
 		}
 	}
 

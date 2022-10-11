@@ -100,9 +100,31 @@ namespace Rendering{
 		Range32 range_y;
 	};
 
+	class CameraRayGenerator{
+		/*
+		Packages data needed to generate camera rays behind a simple interface.
+		WARNING: Assumes static camera position. Not valid in between renders.
+
+		ATTRIBUTION: Genrating camera rays
+			https://www.scratchapixel.com/lessons/3d-basic-rendering/
+				ray-tracing-generating-camera-rays/generating-camera-rays
+		*/
+
+		public:
+			CameraRayGenerator();
+			CameraRayGenerator(Camera camera, IVec2 image_dims);
+			Ray rayFromPixelCoord(IVec2 coord) const;
+
+		private:
+			Basis m_image_basis;
+			IVec2 m_image_dims;
+			FVec3 m_camera_pos;
+			FVec3 m_w_prime;  // Precalculated term used to generate rays
+	};
+
 	std::vector<ImageTile> tiles(Camera camera, ImageConfig config);
 	std::vector<Ray> allRays(Camera camera, ImageConfig config);
-}
+};
 
 namespace Intersection{
 	namespace Utils{

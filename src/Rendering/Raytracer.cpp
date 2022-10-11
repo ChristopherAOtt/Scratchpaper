@@ -113,7 +113,8 @@ void Raytracer::renderImage(const SimCache& cache, Camera camera, RenderSettings
 	settings.sun_direction = settings.sun_direction.normal();
 	TileJob job_template;  // Values that stay the same for all jobs
 	{
-		float film_distance = 1.5f;  // Arbitrary
+		/*
+		float film_distance = 1.0f;  // Arbitrary
 
 		// Convert coordinate system where +X is right, +Y is down, and -Z is the view direction.
 		// NOTE: The image_y is reversed so the image isn't upside-down
@@ -133,6 +134,9 @@ void Raytracer::renderImage(const SimCache& cache, Camera camera, RenderSettings
 			film_ratio.y = float_image_dims.y / float_image_dims.x;
 		}
 		FVec2 half_dims = {film_ratio.x * 0.5f, film_ratio.y * 0.5f};
+		*/
+
+		Rendering::CameraRayGenerator ray_generator(camera, config.num_pixels);
 
 		// Save the values
 		job_template = {  
@@ -141,13 +145,16 @@ void Raytracer::renderImage(const SimCache& cache, Camera camera, RenderSettings
 				.simcache_ptr=&cache,
 				.settings=settings,
 				.pixel_buffer=(Image::PixelRGB*)m_scratch_image.dataPtr(),
+				.ray_generator=ray_generator
 
+				/*
 				// Ray positioning info
 				.plane_world_pos=plane_world_pos,
 				.camera_pos=camera.pos,
 				.image_x=image_x,
 				.image_y=image_y,
 				.half_dims=half_dims
+				*/
 			},
 		};
 	}
@@ -420,11 +427,7 @@ void Raytracer::runTileJob(TileJob job){
 	RenderSettings& settings = job.image_info.settings;
 	Rendering::ImageConfig& config = settings.image_config;
 	float sample_contribution = 1.0f / settings.num_rays_per_pixel;
-	Int32 tile_extent_x = tile.range_x.extent;
-	Int32 tile_extent_y = tile.range_y.extent;
-	Int32 image_extent_x = config.num_pixels.x;
-	Int32 image_extent_y = config.num_pixels.y;
-	Int32 num_pixels = tile_extent_x * tile_extent_y;
+	Int32 num_pixels = tile.range_x.extent * tile.range_y.extent;
 	
 	PathBuffer path_buffer = PathBuffer::init(settings.max_path_len, num_pixels, 
 		m_should_compress_failed_paths);
@@ -436,26 +439,16 @@ void Raytracer::runTileJob(TileJob job){
 	for(Int32 r = 0; r < settings.num_rays_per_pixel; ++r){
 		// Fill the ray buffer with new rays
 		Int32 ray_index = 0;
-		for(Int32 y = 0; y < tile_extent_y; ++y){
-			for(Int32 x = 0; x < tile_extent_x; ++x){
-				float pixel_x = tile.range_x.origin + x;
-				float pixel_y = tile.range_y.origin + y;			
+		for(Int32 y = 0; y < tile.range_y.extent; ++y){
+			for(Int32 x = 0; x < tile.range_x.extent; ++x){
+				IVec2 pixel_coord = {tile.range_x.origin + x, tile.range_y.origin + y};
 				
-				FVec2 distance_scale = {
-					8.0f * (pixel_x / image_extent_x) - 4.0f,
-					8.0f * (pixel_y / image_extent_y) - 4.0f
-				};
-
-				FVec3 film_target_pos = job.image_info.plane_world_pos;
-				film_target_pos += job.image_info.image_x * job.image_info.half_dims.x * 
-					distance_scale.x;
-				film_target_pos += job.image_info.image_y * job.image_info.half_dims.y * 
-					distance_scale.y;
-
+				// Init a "perfect" ray, then add random jitter to the direction vector.
+				Ray ray = job.image_info.ray_generator.rayFromPixelCoord(pixel_coord);
 				FVec3 random_jitter = randomUnitNormal(job.tile_info.gen) * 0.003;
-				FVec3 camera_to_film_dir = (film_target_pos - job.image_info.camera_pos + random_jitter).normal();
-				Ray new_ray = {job.image_info.camera_pos, camera_to_film_dir};
-				ray_buffer[ray_index++] = new_ray;
+				ray.dir = (ray.dir + random_jitter).normal();
+
+				ray_buffer[ray_index++] = ray;
 			}
 		}
 
@@ -473,11 +466,11 @@ void Raytracer::runTileJob(TileJob job){
 	}
 
 	// STEP: All color information has been updated. Write it out to the image buffer.
-	Int64 image_index_linear = tile.range_x.origin + image_extent_x * tile.range_y.origin;
-	Int64 image_step_amount = image_extent_x - tile_extent_x;
+	Int64 image_index_linear = tile.range_x.origin + config.num_pixels.x * tile.range_y.origin;
+	Int64 image_step_amount = config.num_pixels.x - tile.range_x.extent;
 	Int32 tile_index_linear = 0;
-	for(Int32 y = 0; y < tile_extent_y; ++y){
-		for(Int32 x = 0; x < tile_extent_x; ++x){
+	for(Int32 y = 0; y < tile.range_y.extent; ++y){
+		for(Int32 x = 0; x < tile.range_x.extent; ++x){
 			FVec3 output_color;
 			FVec3 raw_color = color_buffer[tile_index_linear++];
 			
@@ -521,6 +514,8 @@ void Raytracer::tracePaths(const SimCache* cache_ptr, const std::vector<Ray>& ra
 		0.02, // Metal,
 	};
 
+	const ChunkTable* table_ptr = &cache_ptr->m_reference_world->m_chunk_table;
+
 	Intersection::Utils::VKDTStack stack = Intersection::Utils::VKDTStack::init(
 		cache_ptr->m_kd_tree_ptr->curr_max_depth);
 	Int32 vertex_write_index = 0;
@@ -539,11 +534,19 @@ void Raytracer::tracePaths(const SimCache* cache_ptr, const std::vector<Ray>& ra
 
 			// VKDTree Intersection
 			RayIntersection curr_hit{INTERSECT_MISS};
-			curr_hit = Intersection::intersectTree(curr_ray, 
+			curr_hit.t_hit = 0;
+			auto hit = Intersection::intersectTree(curr_ray, 
 				cache_ptr->m_kd_tree_ptr, stack);
-			if(curr_hit.type == INTERSECT_POSSIBLE_CHUNK_VOXEL){
+			if(hit.type == INTERSECT_HIT_CHUNK_VOXEL){
+				curr_hit = hit;
+			}else if(curr_hit.type == INTERSECT_POSSIBLE_CHUNK_VOXEL){
 				// TODO: Follow up with chunk trace if this happens
 				// NOTE: For now I'm just making the offending areas glow bright red.
+			}
+
+			hit = Intersection::intersectChunks(curr_ray, table_ptr);
+			if(hit.type == INTERSECT_HIT_CHUNK_VOXEL && hit.t_hit < curr_hit.t_hit){
+				curr_hit = hit;
 			}
 
 			// MKDTree Intersection
